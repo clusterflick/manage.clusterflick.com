@@ -1,0 +1,50 @@
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.linked {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s ease;
+
+  &:hover {
+    border-color: var(--border-strong);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.label {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+
+.value {
+  font-size: 1.75rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  // Long values (a date plus a figure) wrap rather than pushing the grid wide.
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  color: var(--text-muted);
+  font-size: 0.79rem;
+  line-height: 1.4;
+}

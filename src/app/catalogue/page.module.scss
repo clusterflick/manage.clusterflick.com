@@ -1,0 +1,209 @@
+.scroll {
+  overflow-x: auto;
+  // Positioned so absolutely positioned descendants (the visually-hidden
+  // header labels) are clipped by this scroller rather than escaping it and
+  // extending the page - an `overflow` ancestor only clips them when it is
+  // also their containing block.
+  position: relative;
+}
+
+.coverage {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-2);
+  }
+}
+
+.right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.meterCol {
+  width: 110px;
+}
+
+.fieldName {
+  font-weight: 600;
+}
+
+.titleCell {
+  min-width: 220px;
+  max-width: 420px;
+}
+
+.year {
+  color: var(--text-muted);
+  margin-left: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.categories {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  margin-top: 2px;
+}
+
+.venues {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  display: inline-block;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.linkButton {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 550;
+  color: var(--series-1);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.expansion {
+  border-top: 1px solid var(--border);
+  background: var(--surface-page);
+}
+
+.expansionNote {
+  margin: 0;
+  padding: 12px 18px 0;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.silentGroup {
+  border-bottom: 1px solid var(--border);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.silentHeader {
+  display: grid;
+  grid-template-columns: 16px minmax(180px, auto) 1fr;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text-primary);
+
+  &:hover {
+    background: var(--surface-sunken);
+  }
+
+  @media (max-width: 700px) {
+    grid-template-columns: 16px 1fr;
+
+    .silentMeaning {
+      grid-column: 2;
+    }
+  }
+}
+
+.silentToggle {
+  color: var(--text-muted);
+}
+
+.silentLabel {
+  font-weight: 650;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.silentCount {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+}
+
+.silentMeaning {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-width: 460px;
+  min-width: 200px;
+}
+
+.part,
+.partNoPoster {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+// Underlined rather than recoloured: this sits in a table of many of them, and
+// a colour here would read as one more series.
+.partNoPoster {
+  text-decoration: underline dotted var(--status-warning);
+  text-underline-offset: 2px;
+}
+
+.partYear {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+}

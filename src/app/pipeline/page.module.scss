@@ -1,0 +1,111 @@
+.flowTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.repo {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.76rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.figureLabel {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.figureValue {
+  font-size: 1.02rem;
+  font-weight: 620;
+}
+
+.thin {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.conclusions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.conclusion {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.conclusionCount {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.failures {
+  margin-top: 14px;
+  font-size: 0.85rem;
+
+  summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-weight: 550;
+
+    &:hover {
+      color: var(--text-primary);
+    }
+  }
+}
+
+.failureList {
+  list-style: none;
+  margin: 9px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  li {
+    display: flex;
+    gap: 9px;
+    flex-wrap: wrap;
+    align-items: baseline;
+  }
+}
+
+.failureMeta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.figureAside {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-variant-numeric: tabular-nums;
+}

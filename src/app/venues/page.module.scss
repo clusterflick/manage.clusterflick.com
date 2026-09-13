@@ -1,0 +1,96 @@
+.scroll {
+  overflow-x: auto;
+  // Positioned so absolutely positioned descendants (the visually-hidden
+  // header labels) are clipped by this scroller rather than escaping it and
+  // extending the page - an `overflow` ancestor only clips them when it is
+  // also their containing block.
+  position: relative;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-2);
+  }
+}
+
+.right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.kindName {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.kindMeaning {
+  color: var(--text-secondary);
+  font-size: 0.79rem;
+  margin-top: 3px;
+  max-width: 46ch;
+}
+
+.sources {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  max-width: 340px;
+  word-break: break-word;
+}
+
+.message {
+  color: var(--text-secondary);
+  font-size: 0.81rem;
+  max-width: 420px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.venueId {
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.granularity {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
+
+.subFigure {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  margin-top: 1px;
+}
+
+.muted {
+  color: var(--text-muted);
+}

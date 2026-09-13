@@ -1,0 +1,18 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  // Side padding set once here, so no inner block has to remember it and
+  // nothing can scroll horizontally at phone width.
+  padding: 28px 20px 80px;
+
+  @media (max-width: 600px) {
+    padding: 20px 16px 60px;
+  }
+}

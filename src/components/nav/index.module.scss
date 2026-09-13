@@ -1,0 +1,87 @@
+.header {
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+
+  @media (max-width: 600px) {
+    padding: 0 16px;
+    gap: 8px;
+  }
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+  padding: 14px 0;
+  white-space: nowrap;
+}
+
+.brandDim {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.mark {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: var(--series-1);
+  flex: none;
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  overflow-x: auto;
+  // The nav is the one place allowed to scroll sideways on a narrow screen;
+  // the scrollbar itself would be noise on top of it.
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    margin-left: 0;
+    width: 100%;
+    padding-bottom: 8px;
+  }
+}
+
+.link,
+.current {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--text-secondary);
+
+  &:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+  }
+}
+
+.current {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  font-weight: 600;
+}

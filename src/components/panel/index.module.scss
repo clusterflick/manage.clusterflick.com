@@ -1,0 +1,48 @@
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+  overflow: hidden;
+  // Anchor links from the overview land here; without this the sticky header
+  // covers the panel title.
+  scroll-margin-top: 76px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.note {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  max-width: 74ch;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.body {
+  padding: 18px;
+}
+
+.bodyFlush {
+  padding: 0;
+}

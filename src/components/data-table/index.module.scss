@@ -1,0 +1,120 @@
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.search {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 7px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.87rem;
+}
+
+.resultCount {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll {
+  overflow-x: auto;
+  // Positioned so absolutely positioned descendants (the visually-hidden
+  // header labels) are clipped by this scroller rather than escaping it and
+  // extending the page - an `overflow` ancestor only clips them when it is
+  // also their containing block.
+  position: relative;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-2);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.sortButton {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.sortMark {
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.empty {
+  color: var(--text-muted);
+  text-align: center !important;
+  padding: 28px !important;
+}
+
+.more {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  background: var(--surface-2);
+  border: 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 550;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--surface-sunken);
+  }
+}

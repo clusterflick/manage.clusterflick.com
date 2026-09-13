@@ -1,0 +1,103 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.axisText {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.referenceText {
+  fill: var(--text-muted);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+}
+
+.yLabel {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.tooltip {
+  position: absolute;
+  top: 4px;
+  // Centred on the crosshair, then pulled back inside the box if it would
+  // overhang - `max()`/`min()` keep it on screen without measuring.
+  transform: translateX(-50%);
+  min-width: 150px;
+  max-width: 260px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-size: 0.79rem;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.tooltipTitle {
+  font-weight: 650;
+  margin-bottom: 5px;
+  color: var(--text-primary);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  line-height: 1.7;
+}
+
+.tooltipLabel {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooltipValue {
+  margin-left: auto;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 0.79rem;
+  // Legend text is ink, never the series colour; the swatch carries identity.
+  color: var(--text-secondary);
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}

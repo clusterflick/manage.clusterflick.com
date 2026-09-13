@@ -1,0 +1,188 @@
+// Tokens first, everything else against the tokens.
+//
+// The light palette is defined on bare `:root` so nothing depends on a media
+// query having matched. Dark is redefined twice - once under
+// `prefers-color-scheme` for the OS setting, once under `[data-theme="dark"]`
+// for the toggle - so the toggle wins in both directions.
+
+:root {
+  color-scheme: light;
+
+  --surface-page: #f6f5f2;
+  --surface-1: #fcfcfb;
+  --surface-2: #f0efec;
+  --surface-sunken: #eceae5;
+  --border: #dedbd4;
+  --border-strong: #c3bfb5;
+
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #7a7873;
+
+  // Categorical slots, in the fixed order the palette defines. Assigned by
+  // entity, never cycled, never reassigned when a filter changes the count.
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+
+  // Status - fixed, never themed, never reused as a series colour.
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  // Ink for status text, where the fill colours are too light to read on the
+  // light surface.
+  --status-good-ink: #056605;
+  --status-warning-ink: #7a5300;
+  --status-serious-ink: #93441f;
+  --status-critical-ink: #a52121;
+
+  --grid: #e4e1da;
+  --axis: #b8b4aa;
+
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 4px 12px rgb(0 0 0 / 4%);
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@mixin dark-tokens {
+  color-scheme: dark;
+
+  --surface-page: #141413;
+  --surface-1: #1a1a19;
+  --surface-2: #232321;
+  --surface-sunken: #111110;
+  --border: #343430;
+  --border-strong: #4d4c46;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #908e85;
+
+  // The same eight hues, stepped for the dark surface - a selected palette,
+  // not an automatic flip of the light one.
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+
+  --status-good-ink: #4cc94c;
+  --status-warning-ink: #fab219;
+  --status-serious-ink: #ec835a;
+  --status-critical-ink: #e96b6b;
+
+  --grid: #2b2b28;
+  --axis: #55544e;
+
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 4px 12px rgb(0 0 0 / 25%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    @include dark-tokens;
+  }
+}
+
+:root[data-theme="dark"] {
+  @include dark-tokens;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--series-1);
+  text-decoration-color: color-mix(in srgb, var(--series-1) 40%, transparent);
+  text-underline-offset: 2px;
+
+  &:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+}
+
+// A consistent focus ring everywhere, since much of this site is links and
+// interactive chart targets.
+:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

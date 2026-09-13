@@ -1,0 +1,95 @@
+.sectionHeading {
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin: 26px 0 11px;
+}
+
+.scroll {
+  overflow-x: auto;
+  // Positioned so absolutely positioned descendants (the visually-hidden
+  // header labels) are clipped by this scroller rather than escaping it and
+  // extending the page - an `overflow` ancestor only clips them when it is
+  // also their containing block.
+  position: relative;
+}
+
+.flowTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: var(--surface-2);
+  }
+}
+
+.right {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.flowName {
+  font-weight: 600;
+  color: var(--text-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.na {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  border-bottom: 1px dotted var(--border-strong);
+  cursor: help;
+}
+
+.lastRun {
+  color: var(--text-secondary);
+}
+
+.sparkTile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.sparkLabel {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 550;
+}
+
+.sparkDetail {
+  color: var(--text-muted);
+  font-size: 0.79rem;
+}

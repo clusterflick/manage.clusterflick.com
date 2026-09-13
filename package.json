@@ -1,0 +1,29 @@
+{
+  "name": "manage.clusterflick.com",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "npx serve@latest out",
+    "lint": "tsc --noEmit && eslint",
+    "format": "prettier --write --ignore-path .gitignore .",
+    "fetch-source-data": "node ./scripts/fetch-source-data.mjs",
+    "build-report": "node ./scripts/build-report.mjs",
+    "prepare-data": "npm run fetch-source-data && npm run build-report"
+  },
+  "dependencies": {
+    "next": "16.3.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sass": "^1.93.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.37.0",
+    "eslint-config-next": "16.3.5",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3"
+  }
+}
