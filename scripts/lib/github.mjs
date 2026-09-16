@@ -38,6 +38,11 @@ const ATTEMPTS = 4;
 // pagination loop that could otherwise be steered by a bad `total_count`.
 const MAX_RUN_PAGES = 20;
 
+// How far before the reported window to ask the server for runs. See
+// `listWorkflowRuns` - it covers re-runs whose original creation predates the
+// window while the attempt that matters falls inside it.
+const WINDOW_MARGIN_MS = 30 * 86400000;
+
 export async function api(url, description) {
   let lastError;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
@@ -124,10 +129,28 @@ export async function downloadAsset(asset, destination) {
 // index while unfiltered ones do not - see
 // https://github.com/orgs/community/discussions/24626.
 //
+// `since` is widened before it is sent, and the caller's exact window is
+// applied to `run_started_at` afterwards. The two are not the same field:
+// `created` matches `created_at`, which stays at the moment a run was first
+// created, while this site measures the window against `run_started_at`, which
+// GitHub rewrites to the latest attempt when a run is re-run. A run created
+// just before the cutoff and re-run just after it sits inside the window by the
+// field we report on and outside it by the field the server filters on - so
+// asking the server for exactly the window silently drops it. Seen on
+// data-retrieved run 32065589286: created 20:24, re-run at 22:02, cutoff 21:10.
+// Only ever re-runs, which are exactly the `attempt > 1` runs the unassisted
+// figure is built from, so the bias is not neutral.
+//
 // A run still in progress has no conclusion and no duration, so counting one
 // would either read as a failure or skew the average depending on which field
 // you took.
 export async function listWorkflowRuns(repo, workflow, { since, perPage = 100 } = {}) {
+  // Doubling the window is the cheap end of the trade: a re-run triggered more
+  // than a window after its original creation is dropped, which has not been
+  // seen, and the cost is a page or two more per workflow. There is no exact
+  // answer short of reading every run a workflow has ever had, because the API
+  // can only bound on the field it orders by.
+  const floor = since ? new Date(Date.parse(since) - WINDOW_MARGIN_MS).toISOString().replace(/\.\d+Z$/, "Z") : undefined;
   const collected = [];
 
   // Bounded rather than `while (true)`. A `total_count` that disagrees with the
@@ -138,7 +161,7 @@ export async function listWorkflowRuns(repo, workflow, { since, perPage = 100 } 
       per_page: String(perPage),
       page: String(page),
       exclude_pull_requests: "true",
-      ...(since ? { created: `>=${since}` } : {}),
+      ...(floor ? { created: `>=${floor}` } : {}),
     });
     const body = await api(
       `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?${query}`,
