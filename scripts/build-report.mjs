@@ -66,7 +66,19 @@ function buildAlerts({ catalogue, llm, pipeline, health }) {
   }
 
   for (const workflow of pipeline.workflows) {
-    if (!workflow.runs) continue;
+    // The case that used to be skipped in silence. A flow with no runs raised
+    // no alert at all, so the overview stayed calm while the pipeline page
+    // showed the same flow at 0% in red. It is the loudest thing on the page
+    // that the numbers cannot be trusted, so it says so.
+    if (!workflow.runs) {
+      alerts.push({
+        severity: "warning",
+        title: `${workflow.name} reported no runs`,
+        detail: `No run history came back for ${workflow.repo} over the last ${pipeline.windowDays} days. Every flow here runs at least daily, so these figures are missing rather than zero — GitHub's run list intermittently answers from a stale index. Rebuilding usually clears it.`,
+        href: `/pipeline#${workflow.key}`,
+      });
+      continue;
+    }
     if (workflow.reportsUnassisted && workflow.unassistedRate < 0.75) {
       alerts.push({
         severity: workflow.unassistedRate < 0.5 ? "critical" : "warning",

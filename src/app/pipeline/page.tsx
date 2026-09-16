@@ -44,6 +44,10 @@ export default function PipelinePage() {
 
       {pipeline.workflows.map((workflow) => {
         const series = workflow.durationSeries;
+        // No runs collected. Said plainly rather than shown as zeroes: GitHub's
+        // run list intermittently answers from a stale index, and a flow that
+        // reported nothing must not read as a flow that did nothing.
+        const noData = workflow.runs === 0;
         return (
           <Panel
             key={workflow.key}
@@ -57,7 +61,15 @@ export default function PipelinePage() {
               </span>
             }
             note={
-              workflow.skippedNoOps > 0 ? (
+              noData ? (
+                <>
+                  No run history came back for this flow. Every flow here runs at
+                  least daily, so these figures are missing rather than zero —
+                  GitHub&apos;s run list intermittently answers from a stale
+                  index, months behind and with nothing in the response to say
+                  so. Rebuilding usually clears it.
+                </>
+              ) : workflow.skippedNoOps > 0 ? (
                 <>
                   {count(workflow.skippedNoOps)} runs are excluded: this flow opens
                   with a &ldquo;have we already released today?&rdquo; job, and when
@@ -70,7 +82,9 @@ export default function PipelinePage() {
             actions={
               <>
                 <StatusPill severity={rateStatus(workflow.successRate)}>
-                  {percent(workflow.successRate)} succeeded
+                  {workflow.successRate === null
+                    ? "no data"
+                    : `${percent(workflow.successRate)} succeeded`}
                 </StatusPill>
                 {workflow.reportsUnassisted && workflow.unassistedRate !== null && (
                   <StatusPill severity={rateStatus(workflow.unassistedRate)}>
@@ -84,13 +98,13 @@ export default function PipelinePage() {
               <div className={styles.figure}>
                 <span className={styles.figureLabel}>Runs</span>
                 <span className={`${styles.figureValue} numeric`}>
-                  {count(workflow.runs)}
+                  {noData ? "—" : count(workflow.runs)}
                 </span>
               </div>
               <div className={styles.figure}>
                 <span className={styles.figureLabel}>Needed a hand</span>
                 <span className={`${styles.figureValue} numeric`}>
-                  {count(workflow.assistedRuns)}
+                  {noData ? "—" : count(workflow.assistedRuns)}
                 </span>
               </div>
               <div className={styles.figure}>
@@ -158,7 +172,9 @@ export default function PipelinePage() {
               />
             ) : (
               <p className={styles.thin}>
-                Not enough first-attempt successes in the window to plot a trend.
+                {noData
+                  ? "No runs to plot."
+                  : "Not enough first-attempt successes in the window to plot a trend."}
               </p>
             )}
 

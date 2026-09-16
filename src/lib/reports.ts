@@ -209,7 +209,9 @@ export type WorkflowReport = {
   skippedNoOps: number;
   runs: number;
   succeeded: number;
-  successRate: number;
+  // Null when no run history came back at all — which is not the same fact as
+  // "none of them succeeded", and must not render as 0%.
+  successRate: number | null;
   unassisted: number | null;
   unassistedRate: number | null;
   assistedRuns: number;
@@ -325,7 +327,7 @@ export type OverviewReport = {
       key: string;
       name: string;
       runs: number;
-      successRate: number;
+      successRate: number | null;
       reportsUnassisted: boolean;
       unassistedRate: number | null;
       medianDurationMs: number | null;

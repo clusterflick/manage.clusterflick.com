@@ -34,6 +34,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const RETRYABLE = new Set([403, 429, 500, 502, 503, 504]);
 const ATTEMPTS = 4;
 
+// 2,000 runs. Far beyond any window this site asks for, and a hard stop on a
+// pagination loop that could otherwise be steered by a bad `total_count`.
+const MAX_RUN_PAGES = 20;
+
 export async function api(url, description) {
   let lastError;
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
@@ -95,20 +99,59 @@ export async function downloadAsset(asset, destination) {
   return destination;
 }
 
-// Completed runs only, and only as far back as the window needs. A run still in
-// progress has no conclusion and no duration, so including it would either
-// count as a failure or skew the average depending on which field you read.
-export async function listWorkflowRuns(repo, workflow, { perPage = 100 } = {}) {
-  const query = new URLSearchParams({
-    per_page: String(perPage),
-    status: "completed",
-    exclude_pull_requests: "true",
-  });
-  const body = await api(
-    `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?${query}`,
-    `${repo} ${workflow} runs`,
-  );
-  return body.workflow_runs || [];
+// Runs inside the window, completed ones only.
+//
+// The window is applied by the server through `created` rather than by pulling
+// the newest 100 runs and filtering them here. Not just tidier: a workflow
+// busier than a hundred runs a window - clusterflick.com is - was being
+// silently truncated at whatever the first page happened to hold.
+//
+// `status=completed` is deliberately NOT sent, and status is filtered below
+// instead. GitHub answers a status-filtered query out of the Actions search
+// index, and when that index is behind it serves the stale contents as though
+// they were current: a full page of runs, correctly ordered, 200 OK, with a
+// `total_count` that agrees with the body, and nothing anywhere saying the
+// answer is months old. Measured on data-retrieved/retrieve.yml, 40 calls per
+// query shape, rotated so none held a fixed position:
+//
+//   status=completed   5 of 40 stale   (worst: newest run seven months back)
+//   created=>=since    0 of 40
+//   no filter at all   0 of 40
+//
+// Every stale answer held no run inside the window at all, which is how this
+// site came to publish "Retrieve: 0 runs, 0% succeeded" for a flow that had run
+// 68 times. GitHub's own account of it is that filtered searches read that
+// index while unfiltered ones do not - see
+// https://github.com/orgs/community/discussions/24626.
+//
+// A run still in progress has no conclusion and no duration, so counting one
+// would either read as a failure or skew the average depending on which field
+// you took.
+export async function listWorkflowRuns(repo, workflow, { since, perPage = 100 } = {}) {
+  const collected = [];
+
+  // Bounded rather than `while (true)`. A `total_count` that disagrees with the
+  // pages under it is the exact failure this function exists to survive, and it
+  // must not be able to turn into an endless loop.
+  for (let page = 1; page <= MAX_RUN_PAGES; page += 1) {
+    const query = new URLSearchParams({
+      per_page: String(perPage),
+      page: String(page),
+      exclude_pull_requests: "true",
+      ...(since ? { created: `>=${since}` } : {}),
+    });
+    const body = await api(
+      `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?${query}`,
+      `${repo} ${workflow} runs page ${page}`,
+    );
+
+    const batch = body.workflow_runs || [];
+    collected.push(...batch);
+    if (!batch.length) break;
+    if (collected.length >= (body.total_count ?? collected.length)) break;
+  }
+
+  return collected.filter((run) => run.status === "completed");
 }
 
 export async function listRunJobs(repo, runId) {

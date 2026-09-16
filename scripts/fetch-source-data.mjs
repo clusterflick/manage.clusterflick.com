@@ -212,11 +212,21 @@ async function mapWithConcurrency(items, limit, worker) {
 
 async function fetchWorkflowRuns() {
   const since = Date.now() - RUN_WINDOW_DAYS * 86400000;
+  // Sent to GitHub as the `created` filter rather than applied only here - see
+  // `listWorkflowRuns`. Seconds precision: the API rejects the fractional form.
+  const sinceIso = new Date(since).toISOString().replace(/\.\d+Z$/, "Z");
   const collected = {};
+  const empty = [];
 
   for (const target of WORKFLOWS) {
     await step(`${target.name} runs`, path.join(OUT, "runs", `${target.key}.json`), async () => {
-      const runs = await listWorkflowRuns(target.repo, target.workflow);
+      const runs = await listWorkflowRuns(target.repo, target.workflow, {
+        since: sinceIso,
+      });
+      // The window is already applied server-side; re-checking it here means a
+      // filter that was ignored, or honoured against a stale index, cannot
+      // quietly widen what gets reported. The same call
+      // data-analysed/scripts/workflow-run-stats.js makes, for the same reason.
       const inWindow = runs
         .filter((run) => new Date(run.run_started_at ?? run.created_at).getTime() >= since)
         .map((run) => ({
@@ -242,8 +252,24 @@ async function fetchWorkflowRuns() {
 
       await writeJson(path.join(OUT, "runs", `${target.key}.json`), inWindow);
       collected[target.key] = inWindow.length;
-      return `${inWindow.length} in ${RUN_WINDOW_DAYS}d${skipped ? ` (${skipped} did nothing)` : ""}`;
+
+      // Every flow here runs at least daily, so an empty window is the run
+      // history failing to come back rather than a flow that stopped. It is
+      // carried through to the report as "no data" instead of as a zero,
+      // because a zero renders as 0% succeeded - a flow that reported nothing
+      // reading as a flow that failed everything.
+      if (!inWindow.length) empty.push(target.name);
+
+      return `${inWindow.length} in ${RUN_WINDOW_DAYS}d${skipped ? ` (${skipped} did nothing)` : ""}${
+        inWindow.length ? "" : " — nothing came back, reporting as no data"
+      }`;
     });
+  }
+
+  if (empty.length) {
+    console.warn(
+      `  ! no run history came back for ${empty.join(", ")} — reported as missing, not as zero`,
+    );
   }
 
   await writeJson(path.join(OUT, "runs", "meta.json"), {

@@ -70,6 +70,13 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
     // window so the run count on the page is never a silent subset.
     const runs = collected.filter((run) => !run.didNothing);
     const skippedNoOps = collected.length - runs.length;
+    // Nothing collected is not the same fact as nothing succeeded. `rate`
+    // answers 0 for 0 of 0, and that zero rendered as "0% succeeded" in
+    // critical red - a flow whose run history failed to come back reading as a
+    // flow that failed every run. Every flow here runs at least daily, so an
+    // empty window is a collection failure; the rates go null and the page
+    // prints a dash. See `listWorkflowRuns` for what does the failing.
+    const nothingCollected = runs.length === 0;
     const succeeded = runs.filter((run) => run.conclusion === "success");
     const firstAttemptSuccesses = succeeded.filter((run) => run.attempt === 1);
 
@@ -120,11 +127,12 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
       skippedNoOps,
       runs: runs.length,
       succeeded: succeeded.length,
-      successRate: round(rate(succeeded.length, runs.length)),
-      unassisted: target.unassisted ? firstAttemptSuccesses.length : null,
-      unassistedRate: target.unassisted
-        ? round(rate(firstAttemptSuccesses.length, runs.length))
-        : null,
+      successRate: nothingCollected ? null : round(rate(succeeded.length, runs.length)),
+      unassisted: target.unassisted && !nothingCollected ? firstAttemptSuccesses.length : null,
+      unassistedRate:
+        target.unassisted && !nothingCollected
+          ? round(rate(firstAttemptSuccesses.length, runs.length))
+          : null,
       assistedRuns: assisted.length,
       // What the flow takes to run, jobs only.
       duration: spread(firstAttemptSuccesses.map(executionOf)),
