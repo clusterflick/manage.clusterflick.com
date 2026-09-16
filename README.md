@@ -78,6 +78,22 @@ the pages that carry them say so too:
   occasional hosts — community centres, pubs, parks — which are empty almost all
   of the time by their nature. Only a silent *cinema* means something is wrong.
 
+The run history is also read a particular way, because the obvious way returns
+wrong answers. GitHub's workflow-runs endpoint answers a `status`-filtered query
+out of the Actions search index, and when that index is behind it serves the
+stale contents as though they were current — a full page of runs, correctly
+ordered, `200 OK`, with a `total_count` that agrees with the body, and nothing
+saying the answer is months old. Measured on `data-retrieved/retrieve.yml`, 40
+calls per query shape: **5 of 40 stale with `status=completed`, 0 of 40 with the
+`created` form, 0 of 40 unfiltered**. Every stale answer held no run inside the
+window, which is how this site once published "Retrieve: 0 runs, 0% succeeded"
+for a flow that had run 68 times. So the window goes to the server as `created`,
+the pages are followed to `total_count` rather than to the first short page, and
+the status is filtered here off a field every run already carries. A flow that
+still comes back empty is reported as missing rather than as zero — every flow
+here runs at least daily, so an empty window is the history failing to arrive.
+See [community discussion #24626](https://github.com/orgs/community/discussions/24626).
+
 `match` runs are also filtered: the flow is dispatched by every `data-combined`
 release but only builds once a day, and the runs where its opening guard skipped
 everything finish in seconds having done nothing. Averaging those in reported a
