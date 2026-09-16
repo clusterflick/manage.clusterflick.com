@@ -63,6 +63,13 @@ export const WORKFLOWS = [
     name: "Website",
     repo: "clusterflick/clusterflick.com",
     workflow: "generate_site.yml",
+    // `cancel-in-progress: true` on a single concurrency group, so every
+    // data-combined release that lands mid-build cancels the build in flight
+    // and starts a fresh one. Those cancellations are the flow working as
+    // designed - the newer run publishes the newer data - and counting them as
+    // failures reported 17 superseded builds as 17 failed ones. They are
+    // dropped from the window instead, and counted on the page.
+    supersedesInFlight: true,
   },
 ];
 

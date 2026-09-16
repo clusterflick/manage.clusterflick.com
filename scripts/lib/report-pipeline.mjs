@@ -68,8 +68,15 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
     // Guarded no-ops are dropped entirely rather than counted as fast
     // successes - see `guardJob` in lib/workflows.mjs. Reported alongside the
     // window so the run count on the page is never a silent subset.
-    const runs = collected.filter((run) => !run.didNothing);
-    const skippedNoOps = collected.length - runs.length;
+    const active = collected.filter((run) => !run.didNothing);
+    const skippedNoOps = collected.length - active.length;
+    // Superseded runs likewise - see `supersedesInFlight`. Only on flows that
+    // cancel in flight: anywhere else a cancellation is a person or a timeout,
+    // and that is worth counting against the flow.
+    const runs = target.supersedesInFlight
+      ? active.filter((run) => run.conclusion !== "cancelled")
+      : active;
+    const superseded = active.length - runs.length;
     // Nothing collected is not the same fact as nothing succeeded. `rate`
     // answers 0 for 0 of 0, and that zero rendered as "0% succeeded" in
     // critical red - a flow whose run history failed to come back reading as a
@@ -125,6 +132,7 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
       // is absent because it would not have meant anything.
       reportsUnassisted: Boolean(target.unassisted),
       skippedNoOps,
+      superseded,
       runs: runs.length,
       succeeded: succeeded.length,
       successRate: nothingCollected ? null : round(rate(succeeded.length, runs.length)),

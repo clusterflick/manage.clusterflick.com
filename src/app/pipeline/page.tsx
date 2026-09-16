@@ -77,6 +77,12 @@ export default function PipelinePage() {
                   having done nothing, and counting them would report a build time
                   of about nine seconds.
                 </>
+              ) : workflow.superseded > 0 ? (
+                <>
+                  {count(workflow.superseded)} cancelled runs are excluded: this
+                  flow cancels a build in flight when newer data arrives, so those
+                  runs were replaced by a later build rather than failing.
+                </>
               ) : undefined
             }
             actions={

@@ -207,6 +207,7 @@ export type WorkflowReport = {
   workflow: string;
   reportsUnassisted: boolean;
   skippedNoOps: number;
+  superseded: number;
   runs: number;
   succeeded: number;
   // Null when no run history came back at all — which is not the same fact as
