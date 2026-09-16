@@ -105,16 +105,21 @@ export default function LlmUsagePage() {
 
       <Panel
         title="Cache hit rate"
-        note="The number that explains the cost above. A run with a cold cache costs several times what the same work costs warm, so a dip here and a spike there are the same event."
+        note="The number that explains the cost above. A run with a cold cache costs several times what the same work costs warm, so a dip here and a spike there are the same event. The cache expires overnight, so each day's first run is always cold: the warm line leaves it out and is the one to watch; all runs is what the day actually paid for."
       >
         <LineChart
           series={[
             {
-              key: "hitRate",
-              label: "Cache hit rate",
-              values: llm.days.map((day) => day.cacheHitRate),
+              key: "warmHitRate",
+              label: "Warm runs",
+              values: llm.days.map((day) => day.warmCacheHitRate),
               slot: 3,
-              area: true,
+            },
+            {
+              key: "hitRate",
+              label: "All runs",
+              values: llm.days.map((day) => day.cacheHitRate),
+              slot: 1,
             },
           ]}
           labels={dayLabels}

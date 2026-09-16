@@ -97,8 +97,14 @@ export default function OverviewPage() {
             <StatTile
               label="Cache hit rate"
               value={percent(llm.latestCacheHitRate)}
-              detail="A cold cache is what makes a day expensive — the same work costs several times more."
-              severity={cacheStatus(llm.latestCacheHitRate)}
+              detail={
+                llm.latestCacheHitRate === null
+                  ? "Only the day's first run so far, which is always cold. Judged once a second run lands."
+                  : "Runs after the day's first, which is always cold. A cold cache is what makes a day expensive."
+              }
+              severity={
+                llm.latestCacheHitRate === null ? undefined : cacheStatus(llm.latestCacheHitRate)
+              }
               href="/llm-usage"
             />
             <StatTile

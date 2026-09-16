@@ -40,8 +40,26 @@ export default function buildLlmReport(rows) {
     return { empty: true, runs: [], days: [], callSites: [], months: [] };
   }
 
+  // The cache expires overnight, so a day's first run is always cold - 11-17%
+  // every day in the log - and folding it in drags a day of healthy ~90% runs
+  // down to about 50%. That says nothing about whether the cache is working, so
+  // the warm rate is taken over the runs after the first. `null` until a day
+  // has a second run: there is nothing warm to judge yet. Rows arrive ordered
+  // by `at`, and groupBy keeps that order.
+  const warmHitRate = (dayRows) => {
+    const warm = dayRows.slice(1);
+    if (!warm.length) return null;
+    return round(
+      rate(sum(warm.map((row) => row.cacheHits)), sum(warm.map((row) => row.calls))),
+    );
+  };
+
   const byDay = [...groupBy(rows, (row) => row.date)]
-    .map(([date, dayRows]) => ({ date, ...dayTotals(dayRows) }))
+    .map(([date, dayRows]) => ({
+      date,
+      ...dayTotals(dayRows),
+      warmCacheHitRate: warmHitRate(dayRows),
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const byMonth = [...groupBy(rows, (row) => row.date.slice(0, 7))]

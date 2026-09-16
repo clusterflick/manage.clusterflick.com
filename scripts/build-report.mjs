@@ -109,14 +109,17 @@ function buildAlerts({ catalogue, llm, pipeline, health }) {
     // A cache that has gone cold is the single biggest lever on spend - a cold
     // run costs several times what the same work costs warm.
     //
-    // Not on a day with a single run, though. The cache expires overnight, so a
-    // day's first run is always cold - about 13% - and a morning build with
-    // only that run to go on raised this every day, about nothing.
-    if (llm.latest.day.runs > 1 && llm.latest.day.cacheHitRate < 0.5) {
+    //
+    // Judged on the warm rate, which leaves out the day's first run: that one
+    // is always cold, and counting it raised this every morning and left a
+    // normal day sitting on the threshold. `null` before a second run, when
+    // there is nothing to judge yet.
+    const warm = llm.latest.day.warmCacheHitRate;
+    if (warm !== null && warm < 0.5) {
       alerts.push({
-        severity: llm.latest.day.cacheHitRate < 0.25 ? "critical" : "warning",
-        title: `LLM cache hit rate is ${Math.round(llm.latest.day.cacheHitRate * 100)}%`,
-        detail: `On ${llm.latest.day.date} the transform runs missed cache on ${llm.latest.day.cacheMisses.toLocaleString()} of ${llm.latest.day.calls.toLocaleString()} calls. A cold cache is what makes a day expensive.`,
+        severity: warm < 0.25 ? "critical" : "warning",
+        title: `LLM cache hit rate is ${Math.round(warm * 100)}%`,
+        detail: `On ${llm.latest.day.date} the transform runs after the first of the day hit cache on only ${Math.round(warm * 100)}% of calls. The first run is always cold; a later one should not be, and a cold cache is what makes a day expensive.`,
         href: "/llm-usage",
       });
     }
@@ -173,7 +176,7 @@ function buildOverview({ catalogue, llm, pipeline, health }, fetchedAt) {
       : {
           latestDate: llm.latest.day.date,
           latestCost: llm.latest.day.estimatedCostUsd,
-          latestCacheHitRate: llm.latest.day.cacheHitRate,
+          latestCacheHitRate: llm.latest.day.warmCacheHitRate,
           meanCostPerDay: llm.costPerDay.mean,
           weekOnWeek: llm.costPerDay.weekOnWeek,
           projection: llm.projection,

@@ -110,6 +110,9 @@ export type LlmDay = {
   cacheHits: number;
   cacheMisses: number;
   cacheHitRate: number;
+  // Over the runs after the day's first, which is always cold. Null until the
+  // day has a second run.
+  warmCacheHitRate: number | null;
   promptTokens: number;
   candidatesTokens: number;
   estimatedCostUsd: number;
@@ -316,7 +319,8 @@ export type OverviewReport = {
   llm: {
     latestDate: string;
     latestCost: number;
-    latestCacheHitRate: number;
+    // The warm rate - see LlmDay.
+    latestCacheHitRate: number | null;
     meanCostPerDay: number;
     weekOnWeek: number | null;
     projection: LlmReport["projection"];
