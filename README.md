@@ -45,10 +45,12 @@ Useful environment variables for the fetch step:
 ## Deployment
 
 `generate_site.yml` builds and deploys to GitHub Pages on a `release_event`
-dispatch and nightly. The nightly run matters: the run history, the usage log and
-the health log all move on their own schedules, so a site that only rebuilt on a
-data release would show a stale pipeline page on exactly the day the pipeline was
-too broken to publish one.
+dispatch, on every push to `main`, and nightly. The nightly run matters: the run
+history, the usage log and the health log all move on their own schedules, so a
+site that only rebuilt on a data release would show a stale pipeline page on
+exactly the day the pipeline was too broken to publish one. The push trigger is
+what publishes a change to the site itself — the data dispatch only fires when
+the data moves, so without it a merge waited for the next nightly run.
 
 ## Figures that are easy to misread
 

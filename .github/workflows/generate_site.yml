@@ -2,6 +2,12 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types: [release_event]
+  # A merge to main is a change to the site itself - the pages, the report
+  # builders, the fetch step. Nothing else here notices that: a release
+  # dispatch only fires when the data moves, so without this a change could sit
+  # unpublished until the nightly run, most of a day after it was merged.
+  push:
+    branches: [main]
   # A nightly rebuild as well as the release trigger. Most of what this site
   # reports on doesn't move with a data-combined release: the workflow run
   # history, the LLM usage log and the venue health log all change on their own
