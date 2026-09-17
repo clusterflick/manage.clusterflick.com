@@ -64,6 +64,17 @@ export function dateLabel(value: string | number | null | undefined): string {
   }).format(new Date(value));
 }
 
+// Just the clock time, for rows that are already grouped under a date - the
+// runs within a day, where repeating "17 Sep" on every row says nothing.
+export function timeLabel(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: LONDON,
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export function dateTimeLabel(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "—";
   return new Intl.DateTimeFormat("en-GB", {
