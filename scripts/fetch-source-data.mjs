@@ -441,8 +441,8 @@ async function fetchWorkflowRuns() {
         Object.entries(seen).filter(([key]) => timingsCache[key] || fetched[key]),
       ),
     );
+    console.log(`  ${lookups} job lookups, ${Object.keys(seen).length - lookups} from cache`);
   }
-  console.log(`  ${lookups} job lookups, ${Object.keys(seen).length - lookups} from cache`);
 
   await writeJson(path.join(OUT, "runs", "meta.json"), {
     windowDays: RUN_WINDOW_DAYS,

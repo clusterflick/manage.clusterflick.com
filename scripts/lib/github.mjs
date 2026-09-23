@@ -106,14 +106,29 @@ export async function downloadFile(
   { accept = "application/octet-stream" } = {},
 ) {
   await mkdir(path.dirname(destination), { recursive: true });
-  const response = await fetch(url, { headers: { ...headers, Accept: accept } });
-  if (!response.ok || !response.body) {
-    throw new Error(
-      `Could not download ${description}: ${response.status} ${response.statusText}`,
-    );
+  // Retried like `api`: data-transformed alone is 422 downloads a build, and a
+  // single 500 from release storage failed the whole thing.
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { ...headers, Accept: accept } });
+      if (response.ok && response.body) {
+        await pipeline(Readable.fromWeb(response.body), createWriteStream(destination));
+        return destination;
+      }
+      // Unread, the body holds its connection open through the retries.
+      await response.body?.cancel();
+      const error = new Error(
+        `Could not download ${description}: ${response.status} ${response.statusText}`,
+      );
+      error.retryable = RETRYABLE.has(response.status);
+      throw error;
+    } catch (error) {
+      // Network failures and interrupted streams carry no `retryable` flag and
+      // are always worth another go; a 404 is not.
+      if (error.retryable === false || attempt === ATTEMPTS) throw error;
+    }
+    await sleep(500 * 2 ** (attempt - 1));
   }
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(destination));
-  return destination;
 }
 
 // Runs inside the window, completed ones only.
