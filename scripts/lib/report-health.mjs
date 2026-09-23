@@ -169,15 +169,19 @@ export default function buildHealthReport(rows) {
     .sort((a, b) => b.failureRate - a.failureRate || a.venue.localeCompare(b.venue));
 
   const allFailures = rows.filter(failed);
-  const byDay = days.map((day) => {
-    const dayRows = rows.filter((row) => row.day === day);
-    const dayFailures = dayRows.filter(failed);
+  // One point per probe cycle, which is hourly. A day's figure averages 24
+  // cycles together, and a chain being blocked for a morning - every one of its
+  // venues failing, cycle after cycle - flattened into a small bump. Aligned
+  // with `cycles`, like the per-venue series.
+  const rowsByCycle = groupBy(rows, (row) => row.cycle);
+  const byCycle = cycles.map(({ cycle, at }) => {
+    const cycleRows = rowsByCycle.get(cycle);
+    const cycleFailures = cycleRows.filter(failed).length;
     return {
-      day,
-      probes: dayRows.length,
-      failures: dayFailures.length,
-      failureRate: round(rate(dayFailures.length, dayRows.length)),
-      cycles: new Set(dayRows.map((row) => row.cycle)).size,
+      at,
+      probes: cycleRows.length,
+      failures: cycleFailures,
+      failureRate: round(rate(cycleFailures, cycleRows.length)),
     };
   });
 
@@ -200,7 +204,7 @@ export default function buildHealthReport(rows) {
       // this.
       failingNow: venues.filter((venue) => venue.latestFailed).map((venue) => venue.venue),
     },
-    byDay,
+    byCycle,
     // Shared x-axis for every venue sparkline.
     cycles: cycles.map(({ at }) => at),
     venues,

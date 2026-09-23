@@ -29,6 +29,9 @@ export type Series = {
 type Props = {
   series: Series[];
   labels: string[];
+  // Shorter labels for the x-axis when `labels` are too long to sit side by
+  // side - the tooltip keeps the full ones. Same length as `labels`.
+  axisLabels?: string[];
   height?: number;
   // Named rather than passed as a function: these charts are client
   // components rendered from prerendered server pages, which cannot hand a
@@ -53,6 +56,7 @@ function labelledIndices(length: number, maximum = 6): Set<number> {
 export default function LineChart({
   series,
   labels,
+  axisLabels = labels,
   height = 220,
   format,
   reference,
@@ -222,13 +226,15 @@ export default function LineChart({
             );
           })}
 
-        {labels.map((label, index) =>
+        {axisLabels.map((label, index) =>
           showLabel.has(index) ? (
             <text
               key={`${label}-${index}`}
               x={scale.x(index)}
               y={height - 8}
-              textAnchor="middle"
+              // The last label sits on the chart's right edge; centred, a long
+              // one runs off it.
+              textAnchor={index === labels.length - 1 ? "end" : "middle"}
               className={styles.axisText}
             >
               {label}

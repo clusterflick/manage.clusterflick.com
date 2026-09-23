@@ -114,24 +114,21 @@ export default function VenuesPage() {
       </StatGrid>
 
       <Panel
-        title="Failure rate by day"
-        note="Grouped by the release each row came from, which is a London day. The timestamp inside a row is UTC, so through BST a day's first cycle carries the previous date — grouping on that would split days in the wrong place."
+        title="Failure rate by hour"
+        note="One point per probe cycle. A chain blocking or going down fails all of its venues at once, so it shows as a sustained step rather than a blip."
       >
         <LineChart
           series={[
             {
               key: "failureRate",
               label: "Failure rate",
-              values: health.byDay.map((day) => day.failureRate),
+              values: health.byCycle.map((cycle) => cycle.failureRate),
               slot: 2,
               area: true,
             },
           ]}
-          labels={health.byDay.map((day) =>
-            dateLabel(
-              `${day.day.slice(0, 4)}-${day.day.slice(4, 6)}-${day.day.slice(6, 8)}T12:00:00Z`,
-            ),
-          )}
+          labels={health.byCycle.map((cycle) => dateTimeLabel(cycle.at))}
+          axisLabels={health.byCycle.map((cycle) => dateLabel(cycle.at))}
           format="percent"
           height={180}
         />

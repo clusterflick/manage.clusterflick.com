@@ -356,7 +356,7 @@ export type HealthReport = {
     venuesWithFailures: number;
     failingNow: string[];
   };
-  byDay: { day: string; probes: number; failures: number; failureRate: number; cycles: number }[];
+  byCycle: { at: string; probes: number; failures: number; failureRate: number }[];
   cycles: string[];
   venues: HealthVenue[];
   failures: {
