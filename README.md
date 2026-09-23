@@ -9,7 +9,7 @@ in one place:
 - **Pipeline** — how reliably retrieve, transform, match and the rest actually run.
 - **Venues** — which sources have stopped answering, and why.
 
-The overview page reduces all four to a single "needs attention" list.
+The overview page puts the headline figure from each on one screen.
 
 ## How it gets its data
 
@@ -24,7 +24,7 @@ npm run dev
 
 | Step | What it does |
 | --- | --- |
-| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` and `data-matched` releases, the monthly LLM usage logs and daily venue health logs from `data-analysed`, and the workflow run history for every pipeline repo. |
+| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined`, `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs and daily venue health logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
 | `npm run build-report` | Reduces those into one JSON file per page under `src/generated`. |
 | `npm run build` | Static export into `./out`. |
 
@@ -45,12 +45,21 @@ Useful environment variables for the fetch step:
 ## Deployment
 
 `generate_site.yml` builds and deploys to GitHub Pages on a `release_event`
-dispatch, on every push to `main`, and nightly. The nightly run matters: the run
-history, the usage log and the health log all move on their own schedules, so a
-site that only rebuilt on a data release would show a stale pipeline page on
+dispatch, on a `venue_health` dispatch sent by `data-analysed` after each hourly
+health cycle, on every push to `main`, and nightly. The nightly run matters: the
+run history, the usage log and the health log all move on their own schedules, so
+a site that only rebuilt on a data release would show a stale pipeline page on
 exactly the day the pipeline was too broken to publish one. The push trigger is
 what publishes a change to the site itself — the data dispatch only fires when
 the data moves, so without it a merge waited for the next nightly run.
+
+Job timings for finished runs are kept in `./.cache` between builds (restored by
+`actions/cache` in CI), so an hourly rebuild looks up only the runs it has not
+seen rather than making ~600 jobs calls against the token's rate limit.
+
+The per-venue LLM breakdown comes from workflow artifacts, which need a token to
+download and expire after a fortnight. Without one, the LLM page says so in
+place of the table.
 
 ## Figures that are easy to misread
 

@@ -11,6 +11,7 @@ import {
 } from "./scale";
 import { tickFormatter, VALUE_FORMAT, type FormatKey } from "./formatters";
 import styles from "./chart.module.scss";
+import { tooltipPosition } from "./tooltip-position";
 
 export type Series = {
   key: string;
@@ -241,9 +242,7 @@ export default function LineChart({
       {hasHover && (
         <div
           className={styles.tooltip}
-          style={{
-            left: `${(scale.x(hover) / width) * 100}%`,
-          }}
+          style={tooltipPosition(scale.x(hover) / width)}
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>

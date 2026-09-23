@@ -1,4 +1,4 @@
-// The status vocabulary, shared by the alert list, the pills and the charts.
+// The status vocabulary, shared by the tiles, the pills and the charts.
 //
 // Four states, taken from the data-viz status palette. They are deliberately
 // distinct from the categorical series colours so a status can never be read
@@ -35,9 +35,7 @@ export function rateStatus(value: number | null | undefined): Severity {
 
 // Bands for the LLM cache hit rate. Deliberately looser than `rateStatus`: a
 // workflow succeeding 80% of the time is in trouble, while a transform run
-// caching 80% of its calls is doing well. These are the same thresholds the
-// overview alert fires on, so the tile and the alert can never disagree about
-// whether the same number is a problem.
+// caching 80% of its calls is doing well.
 export function cacheStatus(value: number | null | undefined): Severity {
   if (value === null || value === undefined) return "warning";
   if (value >= 0.75) return "good";

@@ -8,6 +8,7 @@ import CoverageTable from "./coverage-table";
 import VenueMissTable from "./venue-miss-table";
 import SilentVenues from "./silent-venues";
 import ResolvedTable from "./resolved-table";
+import NormaliserTable from "./normaliser-table";
 import { catalogue } from "@/lib/reports";
 import { rateStatus } from "@/lib/status";
 import { count, dateTimeLabel, percent } from "@/lib/format";
@@ -16,27 +17,14 @@ import styles from "./page.module.scss";
 export const metadata = { title: "Catalogue — Clusterflick manage" };
 
 export default function CataloguePage() {
-  const { totals, matching, fieldCoverage, ratingCoverage, byCategory } = catalogue;
+  const { totals, matching, fieldCoverage, ratingCoverage, byCategory, normaliser } =
+    catalogue;
   const posters = fieldCoverage.find((field) => field.key === "posterPath");
 
   return (
     <>
       <PageHeader
         title="Catalogue"
-        lede={
-          <>
-            What is in the current combined data, what failed to match, and what
-            the matches are missing. Two things the match rate deliberately does
-            not do: it counts <strong>film listings only</strong> — shorts
-            programmes, Q&amp;As, quiz nights and gigs have no film to match to,
-            and folding them in reports a permanent 25% failure nothing can fix —
-            and it counts a double bill that{" "}
-            <a href="#resolved">resolved into its constituent films</a> as a
-            match, even though the wrapper entry carries{" "}
-            <span className="mono">isUnmatched</span>. Reading that flag alone
-            puts the rate at 91.7% instead of {percent(matching.filmMatchRate, 1)}.
-          </>
-        }
         meta={
           <>
             data-combined <span className="mono">{catalogue.release.combined.tag}</span>,
@@ -106,6 +94,25 @@ export default function CataloguePage() {
         flush
       >
         <ResolvedTable listings={catalogue.resolved} />
+      </Panel>
+
+      <Panel
+        id="normaliser"
+        title={`${count(normaliser.pairs.length)} titles the normaliser couldn't line up`}
+        note={
+          <>
+            Matched listings whose title normalises differently from the TMDB
+            title they matched, so the match took the LLM rather than a title
+            comparison. {count(normaliser.mismatched)} of{" "}
+            {count(normaliser.checked)} matched listings in data-transformed{" "}
+            <span className="mono">{normaliser.source.transformed.tag}</span>,
+            normalised with scripts{" "}
+            <span className="mono">{normaliser.source.scripts.sha.slice(0, 7)}</span>.
+          </>
+        }
+        flush
+      >
+        <NormaliserTable pairs={normaliser.pairs} />
       </Panel>
 
       <Panel

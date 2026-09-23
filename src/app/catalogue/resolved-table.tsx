@@ -18,13 +18,9 @@ export default function ResolvedTable({ listings }: { listings: ResolvedListing[
       sortValue: (listing) => listing.title.toLowerCase(),
       render: (listing) => (
         <div className={styles.titleCell}>
-          {listing.url ? (
-            <a href={listing.url} target="_blank" rel="noreferrer">
-              {listing.title}
-            </a>
-          ) : (
-            listing.title
-          )}
+          <a href={listing.url} target="_blank" rel="noreferrer">
+            {listing.title}
+          </a>
           <div className={styles.categories}>{listing.categories.join(" · ")}</div>
         </div>
       ),
@@ -93,7 +89,6 @@ export default function ResolvedTable({ listings }: { listings: ResolvedListing[
       }
       searchPlaceholder="Filter by listing, film or venue…"
       initialSort={{ key: "count", direction: "desc" }}
-      pageSize={25}
     />
   );
 }

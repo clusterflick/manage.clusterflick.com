@@ -131,6 +131,7 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
       // Said on the page rather than assumed: where this column is absent, it
       // is absent because it would not have meant anything.
       reportsUnassisted: Boolean(target.unassisted),
+      unassistedGap: target.unassistedGap ?? null,
       skippedNoOps,
       superseded,
       runs: runs.length,

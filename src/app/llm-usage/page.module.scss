@@ -78,7 +78,25 @@
   vertical-align: baseline;
 }
 
-.coverageLine {
-  margin: 0;
-  color: var(--text-secondary);
+.callSiteList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.callSiteChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+
+  .swatch {
+    margin-right: 0;
+  }
+}
+
+.chipCount {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }

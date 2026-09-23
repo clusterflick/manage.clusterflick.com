@@ -91,13 +91,25 @@ export async function latestRelease(repo) {
 // is over 100MB, and holding those in memory alongside the parse that follows
 // is the difference between a build that fits in a runner and one that doesn't.
 export async function downloadAsset(asset, destination) {
+  return downloadFile(asset.browser_download_url, destination, asset.name);
+}
+
+// Anything else served as a file: a workflow artifact's zip, or a source file
+// from a repo. Artifact downloads redirect to storage on another origin, and
+// fetch drops the Authorization header on that hop, which is what the storage
+// side expects. The artifact endpoint answers 415 to an octet-stream Accept, so
+// it passes the API's own media type instead.
+export async function downloadFile(
+  url,
+  destination,
+  description = url,
+  { accept = "application/octet-stream" } = {},
+) {
   await mkdir(path.dirname(destination), { recursive: true });
-  const response = await fetch(asset.browser_download_url, {
-    headers: { ...headers, Accept: "application/octet-stream" },
-  });
+  const response = await fetch(url, { headers: { ...headers, Accept: accept } });
   if (!response.ok || !response.body) {
     throw new Error(
-      `Could not download ${asset.name}: ${response.status} ${response.statusText}`,
+      `Could not download ${description}: ${response.status} ${response.statusText}`,
     );
   }
   await pipeline(Readable.fromWeb(response.body), createWriteStream(destination));

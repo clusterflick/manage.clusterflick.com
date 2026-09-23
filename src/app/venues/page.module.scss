@@ -55,15 +55,34 @@
 .kindMeaning {
   color: var(--text-secondary);
   font-size: 0.79rem;
-  margin-top: 3px;
-  max-width: 46ch;
 }
 
-.sources {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  max-width: 340px;
-  word-break: break-word;
+.failureSummary {
+  display: grid;
+  gap: 10px;
+  font-size: 0.82rem;
+}
+
+.kindList,
+.messageList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+  }
+}
+
+.messageMeta {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
 .message {
@@ -93,4 +112,9 @@
 
 .muted {
   color: var(--text-muted);
+}
+
+.allClear {
+  margin: 0;
+  color: var(--text-secondary);
 }

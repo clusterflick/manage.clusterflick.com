@@ -5,33 +5,33 @@ import StatGrid from "@/components/stat-tile/grid";
 import LineChart from "@/components/charts/line-chart";
 import HealthTable from "./health-table";
 import { health, overview } from "@/lib/reports";
+import StatusPill from "@/components/status-pill";
 import { failureStatus } from "@/lib/status";
-import { count, dateLabel, dateTimeLabel, duration, percent } from "@/lib/format";
+import {
+  count,
+  dateLabel,
+  dateTimeLabel,
+  duration,
+  percent,
+  relativeTime,
+} from "@/lib/format";
 import styles from "./page.module.scss";
 
 export const metadata = { title: "Venues — Clusterflick manage" };
 
-// What each failure kind actually means, so a fortnight of 503s is not read as
-// a scraper to fix.
-const KIND_MEANING: Record<string, string> = {
-  "probe-error": "The probe itself failed — a timeout, a bad status, or a fetch that never completed. Ours to fix.",
-  "source-maintenance": "The venue answered with a maintenance status. Theirs to fix; worth watching if it persists.",
-  "source-queue": "The venue put the probe in a virtual waiting room. Expected around on-sales.",
-  "no-counts": "The probe completed but reported no counts at all.",
-};
-
 export default function VenuesPage() {
   if (health.empty) {
-    return <PageHeader title="Venues" lede="No health probes have been collected yet." />;
+    return <PageHeader title="Venues" meta="No health probes have been collected yet." />;
   }
 
   const builtAt = new Date(overview.fetchedAt).getTime();
+  const failing = health.venues.filter((venue) => venue.currentOutage);
+  const lastCycleAt = health.cycles[health.cycles.length - 1];
 
   return (
     <>
       <PageHeader
         title="Venue health"
-        lede="Whether each source is still answering, and with how much. The health workflow probes these sources several times a day; a probe that comes back with nothing is recorded with the reason it gave. Counts are never summed across sources — a chain answering with individual performances and one answering with a film-by-date matrix are counting different things, so only films and dates are comparable everywhere."
         meta={
           <>
             {count(health.window.probes)} probes across {health.window.venues} sources,{" "}
@@ -40,6 +40,59 @@ export default function VenuesPage() {
           </>
         }
       />
+
+      <Panel
+        id="failing"
+        title={
+          failing.length
+            ? `${failing.length} ${failing.length === 1 ? "source is" : "sources are"} failing`
+            : "Every source is answering"
+        }
+        note={`As of the latest probe cycle, ${relativeTime(lastCycleAt, builtAt)} (${dateTimeLabel(lastCycleAt)}).`}
+        actions={
+          <StatusPill severity={failing.length ? "critical" : "good"}>
+            {failing.length ? `${failing.length} failing` : "all clear"}
+          </StatusPill>
+        }
+        flush={failing.length > 0}
+      >
+        {failing.length > 0 ? (
+          <div className={styles.scroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Kind</th>
+                  <th>Latest error</th>
+                  <th className={styles.right}>Failing since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {failing.map((venue) => {
+                  const outage = venue.currentOutage!;
+                  return (
+                    <tr key={venue.venue}>
+                      <td className={`${styles.venueId} mono`}>{venue.venue}</td>
+                      <td className={styles.nowrap}>{outage.kind}</td>
+                      <td className={styles.message}>{outage.message ?? "—"}</td>
+                      <td className={`${styles.right} ${styles.nowrap}`}>
+                        {outage.lastOkAt ? dateTimeLabel(outage.since) : "whole window"}
+                        <div className={styles.subFigure}>
+                          {count(outage.probes)} {outage.probes === 1 ? "probe" : "probes"} in a row
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className={styles.allClear}>
+            All {health.window.venues} sources answered their latest probe.
+          </p>
+        )}
+      </Panel>
 
       <StatGrid>
         <StatTile
@@ -51,7 +104,7 @@ export default function VenuesPage() {
         <StatTile
           label="Sources with failures"
           value={`${health.totals.venuesWithFailures} / ${health.window.venues}`}
-          detail="At least one failed probe in the window"
+          detail={`At least one failed probe over the ${health.window.days} days`}
         />
         <StatTile
           label="Cycles"
@@ -85,40 +138,8 @@ export default function VenuesPage() {
       </Panel>
 
       <Panel
-        title="Why probes failed"
-        note="Grouped by what the probe reported. Whose fault it was matters: a source in maintenance or a queue is telling us to come back later, and is not a scraper to go and fix."
-        flush
-      >
-        <div className={styles.scroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Kind</th>
-                <th className={styles.right}>Probes</th>
-                <th>Sources affected</th>
-              </tr>
-            </thead>
-            <tbody>
-              {health.byKind.map((kind) => (
-                <tr key={kind.kind}>
-                  <td>
-                    <div className={styles.kindName}>{kind.kind}</div>
-                    <div className={styles.kindMeaning}>
-                      {KIND_MEANING[kind.kind] ?? "Not a kind this report has been taught."}
-                    </div>
-                  </td>
-                  <td className={styles.right}>{count(kind.count)}</td>
-                  <td className={`${styles.sources} mono`}>{kind.venues.join(", ")}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
-
-      <Panel
         title="Sources"
-        note="One row per source, worst first. The sparkline is films per probe across the window; a break in the line is a probe that returned nothing, which is deliberately not drawn as a zero — a source answering “no films” and a source not answering are different things."
+        note="One row per source, worst first. A break in the sparkline is a probe that returned nothing. Expand a row for what its failures were."
         flush
       >
         <HealthTable

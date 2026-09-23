@@ -24,6 +24,7 @@
 // are all "Mystery Movie" screenings, where the film is secret by design.
 
 import { groupBy, rate, round } from "./stats.mjs";
+import { movieUrl, venueUrl } from "./clusterflick-urls.mjs";
 
 // Categories that name an actual feature film, and so ought to match. Anything
 // else is a listing the matcher is right to leave alone.
@@ -97,19 +98,17 @@ function nextPerformance(movie, now) {
 }
 
 function summariseMovie(movie, venues, now) {
-  const showings = Object.values(movie.showings);
   return {
     id: movie.id,
     title: movie.title,
     year: movie.year ?? null,
     categories: [...categoriesOf(movie)].sort(),
     venues: venuesOf(movie, venues),
-    showings: showings.length,
+    showings: Object.keys(movie.showings).length,
     performances: movie.performances.length,
     nextPerformance: nextPerformance(movie, now),
-    // One example link is enough to go and look at the listing; the rest are a
-    // click away in the venue's own programme.
-    url: showings[0]?.url ?? null,
+    // The listing as clusterflick.com shows it, with every showing on one page.
+    url: movieUrl(movie),
   };
 }
 
@@ -182,6 +181,8 @@ export default function buildCatalogueReport(combined, matched, releaseInfo) {
         id: venueId,
         name: venues[venueId]?.name ?? venueId,
         type: venues[venueId]?.type ?? null,
+        // The venue's page on clusterflick.com, which lists what it is showing.
+        url: venues[venueId] ? venueUrl(venues[venueId]) : null,
         filmShowings: showings.length,
         unmatched: missed,
         missRate: round(rate(missed, showings.length)),

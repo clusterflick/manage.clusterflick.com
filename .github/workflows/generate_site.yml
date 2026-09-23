@@ -1,7 +1,11 @@
 on:
   workflow_dispatch:
+  # `venue_health` is sent by data-analysed after each hourly health cycle, so
+  # the venues page shows which sources are failing now rather than as of the
+  # last release. Each rebuild cancels the one in flight (see `concurrency`),
+  # and the newest always has the newest of everything.
   repository_dispatch:
-    types: [release_event]
+    types: [release_event, venue_health]
   # A merge to main is a change to the site itself - the pages, the report
   # builders, the fetch step. Nothing else here notices that: a release
   # dispatch only fires when the data moves, so without this a change could sit
@@ -45,6 +49,15 @@ jobs:
           static_site_generator: next
           generator_config_file: ./next.config.ts
       - run: npm ci
+      # Job timings for finished runs, carried between builds so an hourly
+      # rebuild looks up only the runs it hasn't seen - see TIMINGS_CACHE in
+      # scripts/fetch-source-data.mjs. A fresh key every build (caches are
+      # immutable) restoring from the newest earlier one.
+      - uses: actions/cache@v5
+        with:
+          path: .cache
+          key: run-timings-${{ github.run_id }}
+          restore-keys: run-timings-
       - name: Fetch source data
         env:
           # Every repo this reads is public, so this is only ever about the rate

@@ -33,6 +33,53 @@ const GRANULARITY_METRIC = {
 
 const failed = (row) => Boolean(row.reason) || !row.counts;
 
+const failureKind = (row) => row.reason?.kind ?? "no-counts";
+
+const failureMessage = (row) =>
+  row.reason?.message ?? (row.reason?.status ? `status ${row.reason.status}` : null);
+
+function currentOutage(ordered) {
+  let start = ordered.length;
+  while (start > 0 && failed(ordered[start - 1])) start -= 1;
+  if (start === ordered.length) return null;
+  const latest = ordered[ordered.length - 1];
+  return {
+    since: ordered[start].at,
+    probes: ordered.length - start,
+    // Null when the source has failed every probe in the window, so "since"
+    // is only as far back as the window reaches.
+    lastOkAt: start > 0 ? ordered[start - 1].at : null,
+    kind: failureKind(latest),
+    message: failureMessage(latest),
+  };
+}
+
+// What a source's failures looked like, for the row that expands under it in
+// the table: how many of each kind, and the distinct messages behind them. A
+// probe timing out forty times reads as one message with a count, not forty
+// rows.
+function summariseFailures(failures) {
+  const kinds = [...groupBy(failures, failureKind)]
+    .map(([kind, group]) => ({ kind, count: group.length }))
+    .sort((a, b) => b.count - a.count);
+  const messages = [
+    ...groupBy(failures, (row) => `${failureKind(row)}\u0000${failureMessage(row) ?? ""}`),
+  ]
+    .map(([, group]) => {
+      const latest = group[group.length - 1];
+      return {
+        kind: failureKind(latest),
+        message: failureMessage(latest),
+        count: group.length,
+        firstAt: group[0].at,
+        lastAt: latest.at,
+      };
+    })
+    .sort((a, b) => b.lastAt.localeCompare(a.lastAt))
+    .slice(0, 5);
+  return { kinds, messages };
+}
+
 export default function buildHealthReport(rows) {
   if (!rows.length) return { empty: true, venues: [], days: [], failures: [] };
 
@@ -96,6 +143,13 @@ export default function buildHealthReport(rows) {
         },
         requests: ordered.length ? Math.round(mean(ordered.map((row) => row.requests))) : null,
         lastProbedAt: ordered[ordered.length - 1].at,
+        // Whether the source is failing right now, as opposed to having failed
+        // at some point in the window - the question the overview asks.
+        latestFailed: failed(ordered[ordered.length - 1]),
+        // The unbroken run of failures the source is in now, if any: when it
+        // started, how many probes long it is, and what the latest one said.
+        currentOutage: currentOutage(ordered),
+        failureSummary: summariseFailures(failures),
         // Films per cycle, indexed against the shared `cycles` list above -
         // the shape that shows a source quietly shedding listings before it
         // stops answering entirely.
@@ -115,14 +169,6 @@ export default function buildHealthReport(rows) {
     .sort((a, b) => b.failureRate - a.failureRate || a.venue.localeCompare(b.venue));
 
   const allFailures = rows.filter(failed);
-  const byKind = [...groupBy(allFailures, (row) => row.reason?.kind ?? "no-counts")]
-    .map(([kind, group]) => ({
-      kind,
-      count: group.length,
-      venues: [...new Set(group.map((row) => row.venue))].sort(),
-    }))
-    .sort((a, b) => b.count - a.count);
-
   const byDay = days.map((day) => {
     const dayRows = rows.filter((row) => row.day === day);
     const dayFailures = dayRows.filter(failed);
@@ -149,8 +195,11 @@ export default function buildHealthReport(rows) {
       failures: allFailures.length,
       failureRate: round(rate(allFailures.length, rows.length)),
       venuesWithFailures: new Set(allFailures.map((row) => row.venue)).size,
+      // Sources whose most recent probe came back with nothing. A source that
+      // failed once a week ago and has answered every probe since is not
+      // this.
+      failingNow: venues.filter((venue) => venue.latestFailed).map((venue) => venue.venue),
     },
-    byKind,
     byDay,
     // Shared x-axis for every venue sparkline.
     cycles: cycles.map(({ at }) => at),
@@ -165,7 +214,7 @@ export default function buildHealthReport(rows) {
         venue: row.venue,
         at: row.at,
         day: row.day,
-        kind: row.reason?.kind ?? "no-counts",
+        kind: failureKind(row),
         message: row.reason?.message ?? null,
         status: row.reason?.status ?? null,
         durationMs: row.durationMs,

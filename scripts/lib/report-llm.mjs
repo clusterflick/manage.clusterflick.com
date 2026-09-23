@@ -35,10 +35,65 @@ function dayTotals(rows) {
   };
 }
 
-export default function buildLlmReport(rows) {
-  if (!rows.length) {
+// How far back the day-level figures reach. The log goes back months, and a
+// chart spanning all of it flattens the last few weeks - the part anyone is
+// looking at - into the right-hand edge.
+export const WINDOW_DAYS = 30;
+
+const shiftDate = (date, days) => {
+  const shifted = new Date(`${date}T12:00:00Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+};
+
+// What each venue asked of the LLM on one transform run: cost from the run's
+// usage report, and which call sites it hit from the per-call records behind
+// it. Most expensive first, then busiest, so the venues worth trimming lead.
+function buildVenueUsage(venueUsage) {
+  if (!venueUsage?.available) {
+    return { available: false, reason: venueUsage?.reason ?? "missing", venues: [] };
+  }
+  const venues = Object.entries(venueUsage.byVenue)
+    .map(([venueId, bucket]) => {
+      const records = venueUsage.records[venueId] ?? [];
+      const callSites = [...groupBy(records, (record) => record.cacheKeyPrefix)]
+        .map(([name, group]) => ({
+          name,
+          calls: group.length,
+          cacheMisses: group.filter((record) => !record.cacheHit).length,
+        }))
+        .sort((a, b) => b.calls - a.calls);
+      return {
+        venueId,
+        calls: bucket.calls,
+        cacheMisses: bucket.cacheMisses,
+        cacheHitRate: round(bucket.cacheHitRate),
+        estimatedCostUsd: money(bucket.estimatedCostUsd),
+        maxPromptChars: bucket.maxPromptChars,
+        callSites,
+      };
+    })
+    .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.calls - a.calls);
+  return {
+    available: true,
+    runId: venueUsage.runId,
+    runAt: venueUsage.runAt,
+    venueCount: venueUsage.venueCount,
+    venues,
+  };
+}
+
+export default function buildLlmReport(allRows, venueUsage) {
+  if (!allRows.length) {
     return { empty: true, runs: [], days: [], callSites: [], months: [] };
   }
+
+  // Months and the projection are read over the whole log, since a month cut
+  // off at the window's edge would compare as a short month. Everything else
+  // is the last WINDOW_DAYS.
+  const lastDate = allRows[allRows.length - 1].date;
+  const firstDate = shiftDate(lastDate, -(WINDOW_DAYS - 1));
+  const rows = allRows.filter((row) => row.date >= firstDate);
 
   // The cache expires overnight, so a day's first run is always cold - 11-17%
   // every day in the log - and folding it in drags a day of healthy ~90% runs
@@ -62,7 +117,7 @@ export default function buildLlmReport(rows) {
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  const byMonth = [...groupBy(rows, (row) => row.date.slice(0, 7))]
+  const byMonth = [...groupBy(allRows, (row) => row.date.slice(0, 7))]
     .map(([month, monthRows]) => {
       const days = new Set(monthRows.map((row) => row.date));
       const totals = dayTotals(monthRows);
@@ -148,6 +203,7 @@ export default function buildLlmReport(rows) {
   return {
     empty: false,
     window: {
+      windowDays: WINDOW_DAYS,
       firstDate: byDay[0].date,
       lastDate: latestDay.date,
       runs: rows.length,
@@ -186,6 +242,7 @@ export default function buildLlmReport(rows) {
     months: byMonth,
     callSites: callSites.filter((site) => site.calls > 0),
     largestPrompts,
+    venueUsage: buildVenueUsage(venueUsage),
     // Per-run series, for the runs-within-a-day view. Trimmed to the fields the
     // charts read: the full rows are large and nothing plots the rest.
     runs: rows.map((row) => ({

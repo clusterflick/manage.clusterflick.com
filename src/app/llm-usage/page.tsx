@@ -4,11 +4,13 @@ import StatTile from "@/components/stat-tile";
 import StatGrid from "@/components/stat-tile/grid";
 import LineChart from "@/components/charts/line-chart";
 import StackedBars from "@/components/charts/stacked-bars";
+import VenueUsageTable from "./venue-usage-table";
 import { llm } from "@/lib/reports";
 import {
   compactCount,
   count,
   dateLabel,
+  dateTimeLabel,
   money,
   percent,
   signedPercent,
@@ -22,7 +24,7 @@ export default function LlmUsagePage() {
   if (llm.empty) {
     return (
       <>
-        <PageHeader title="LLM usage" lede="No usage rows have been collected yet." />
+        <PageHeader title="LLM usage" meta="No usage rows have been collected yet." />
       </>
     );
   }
@@ -53,11 +55,12 @@ export default function LlmUsagePage() {
     <>
       <PageHeader
         title="LLM usage"
-        lede="What the transform pipeline spends on the LLM and where it goes. The pipeline runs two to four times a day, so every figure here is a sum over a day's runs rather than a single run — a row read as a day would understate spend by however many runs it dropped."
         meta={
           <>
-            {count(llm.window.runs)} transform runs across {llm.window.days} days,{" "}
-            {llm.window.firstDate} to {llm.window.lastDate}
+            Last {llm.window.windowDays} days, {dateLabel(`${llm.window.firstDate}T12:00:00Z`)}{" "}
+            to {dateLabel(`${llm.window.lastDate}T12:00:00Z`)} · {count(llm.window.runs)}{" "}
+            transform runs on {llm.window.days} days. The month table and projection
+            use the full log.
           </>
         }
       />
@@ -310,15 +313,37 @@ export default function LlmUsagePage() {
       </Panel>
 
       <Panel
+        id="venues"
         title="Venue coverage"
-        note="How many of the venues in a transform run needed the LLM at all. The rest were handled by the deterministic parsers."
+        note={
+          llm.venueUsage.available ? (
+            <>
+              {llm.venueUsage.venues.length} of {llm.venueUsage.venueCount} venues
+              needed the LLM on the transform run of{" "}
+              {dateTimeLabel(llm.venueUsage.runAt)}; the rest were handled by the
+              deterministic parsers. &ldquo;Uncached&rdquo; calls are the ones that
+              were paid for.
+            </>
+          ) : (
+            <>
+              On the most recent run, {llm.latest.venuesWithLlmUsage} of{" "}
+              {llm.latest.venueCount} venues needed the LLM. The per-venue
+              breakdown comes from the transform run&apos;s artifacts, which{" "}
+              {llm.venueUsage.reason === "no-token"
+                ? "need a GitHub token to download"
+                : "had expired or could not be found"}
+              .
+            </>
+          )
+        }
+        flush
       >
-        <p className={styles.coverageLine}>
-          On the most recent run, <strong>{llm.latest.venuesWithLlmUsage}</strong> of{" "}
-          <strong>{llm.latest.venueCount}</strong> venues needed the LLM —{" "}
-          {percent(llm.latest.venuesWithLlmUsage / llm.latest.venueCount, 0)} of the
-          pipeline.
-        </p>
+        {llm.venueUsage.available && (
+          <VenueUsageTable
+            venues={llm.venueUsage.venues}
+            slots={Object.fromEntries(callSiteSlots)}
+          />
+        )}
       </Panel>
     </>
   );

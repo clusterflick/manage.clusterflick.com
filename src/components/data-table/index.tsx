@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import styles from "./index.module.scss";
 
 export type Column<Row> = {
@@ -27,6 +27,9 @@ type Props<Row> = {
   // 400 rows is one nobody scrolls, and it costs a second of layout.
   pageSize?: number;
   emptyMessage?: string;
+  // Makes rows expandable: a toggle leads each row, and this renders beneath
+  // it across the full width. Returning null leaves that row without a toggle.
+  renderExpanded?: (row: Row) => ReactNode | null;
 };
 
 export default function DataTable<Row>({
@@ -36,12 +39,23 @@ export default function DataTable<Row>({
   initialSort,
   searchText,
   searchPlaceholder = "Filter…",
-  pageSize = 50,
+  pageSize = 25,
   emptyMessage = "Nothing to show.",
+  renderExpanded,
 }: Props<Row>) {
   const [sort, setSort] = useState(initialSort ?? null);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState(false);
+  const [openRows, setOpenRows] = useState<Set<string>>(() => new Set());
+  const columnCount = columns.length + (renderExpanded ? 1 : 0);
+
+  const toggleRow = (key: string) =>
+    setOpenRows((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const filtered = useMemo(() => {
     if (!searchText || !query.trim()) return rows;
@@ -100,6 +114,11 @@ export default function DataTable<Row>({
         <table className={styles.table}>
           <thead>
             <tr>
+              {renderExpanded && (
+                <th className={styles.toggleCol}>
+                  <span className="visually-hidden">Details</span>
+                </th>
+              )}
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -136,21 +155,48 @@ export default function DataTable<Row>({
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
-              <tr key={rowKey(row)}>
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={column.align === "right" ? styles.right : undefined}
-                  >
-                    {column.render(row)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {visible.map((row) => {
+              const key = rowKey(row);
+              const detail = renderExpanded?.(row) ?? null;
+              const isOpen = detail !== null && openRows.has(key);
+              return (
+                <Fragment key={key}>
+                  <tr className={isOpen ? styles.openRow : undefined}>
+                    {renderExpanded && (
+                      <td className={styles.toggleCol}>
+                        {detail !== null && (
+                          <button
+                            type="button"
+                            className={styles.toggle}
+                            onClick={() => toggleRow(key)}
+                            aria-expanded={isOpen}
+                            aria-label={isOpen ? "Hide details" : "Show details"}
+                          >
+                            <span aria-hidden="true">{isOpen ? "▾" : "▸"}</span>
+                          </button>
+                        )}
+                      </td>
+                    )}
+                    {columns.map((column) => (
+                      <td
+                        key={column.key}
+                        className={column.align === "right" ? styles.right : undefined}
+                      >
+                        {column.render(row)}
+                      </td>
+                    ))}
+                  </tr>
+                  {isOpen && (
+                    <tr className={styles.detailRow}>
+                      <td colSpan={columnCount}>{detail}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
             {!visible.length && (
               <tr>
-                <td colSpan={columns.length} className={styles.empty}>
+                <td colSpan={columnCount} className={styles.empty}>
                   {emptyMessage}
                 </td>
               </tr>

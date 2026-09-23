@@ -14,30 +14,11 @@ export default function PipelinePage() {
     <>
       <PageHeader
         title="Pipeline stability"
-        lede={
-          <>
-            How reliably each flow runs, over completed runs only. Two questions,
-            kept apart because they answer to different things:{" "}
-            <strong>did it work</strong> is the conclusion of every run, and{" "}
-            <strong>did it work without help</strong> counts only runs that
-            succeeded on the first attempt. The second is reported for retrieve,
-            transform and match alone — those three have no auto-rerun of their
-            own, so a second attempt can only mean a person clicked re-run. The
-            rest carry a rerun-on-failure workflow or cancel-in-progress, where a
-            later attempt says nothing about whether anyone was involved.
-          </>
-        }
         meta={
           <>
             Last {pipeline.windowDays} days, collected{" "}
-            {dateTimeLabel(pipeline.collectedAt)}. Durations are{" "}
-            <strong>execution time</strong>, measured across the jobs that
-            actually ran, and average first-attempt successes only — GitHub
-            rewrites a run&apos;s start time when it is re-run, so a retried
-            run&apos;s elapsed time describes nothing real. Time spent queued for
-            a runner is reported separately rather than folded in: one diff run
-            waited 53 minutes and then built in 2m20s, and calling that a
-            55-minute build says something false about the build.
+            {dateTimeLabel(pipeline.collectedAt)}. Durations are execution time
+            over first-attempt successes, queue time excluded.
           </>
         }
       />

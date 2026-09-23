@@ -5,6 +5,7 @@ import { makeScale, niceDomain, ticksFor } from "./scale";
 import { tickFormatter, VALUE_FORMAT, type FormatKey } from "./formatters";
 import styles from "./chart.module.scss";
 import barStyles from "./bar-chart.module.scss";
+import { tooltipPosition } from "./tooltip-position";
 
 export type Bar = {
   label: string;
@@ -133,7 +134,7 @@ export default function BarChart({ bars, height = 220, format }: Props) {
       {hover !== null && (
         <div
           className={styles.tooltip}
-          style={{ left: `${(scale.x(hover) / width) * 100}%` }}
+          style={tooltipPosition(scale.x(hover) / width)}
           role="status"
         >
           <div className={styles.tooltipTitle}>{bars[hover].label}</div>

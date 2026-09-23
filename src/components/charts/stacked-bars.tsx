@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { niceStep } from "./scale";
 import { tickFormatter, VALUE_FORMAT, type FormatKey } from "./formatters";
 import styles from "./chart.module.scss";
+import { tooltipPosition } from "./tooltip-position";
 
 export type StackSeries = {
   key: string;
@@ -164,7 +165,7 @@ export default function StackedBars({
       {hover !== null && (
         <div
           className={styles.tooltip}
-          style={{ left: `${(xOf(hover) / width) * 100}%` }}
+          style={tooltipPosition(xOf(hover) / width)}
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>

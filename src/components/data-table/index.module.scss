@@ -118,3 +118,42 @@
     background: var(--surface-sunken);
   }
 }
+
+.toggleCol {
+  width: 36px;
+  padding-right: 0 !important;
+}
+
+.toggle {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+}
+
+// The open row and the detail beneath it read as one block.
+.table tbody tr.openRow td {
+  border-bottom: 0;
+}
+
+.table tbody tr.detailRow {
+  background: var(--surface-2);
+
+  &:hover {
+    background: var(--surface-2);
+  }
+
+  td {
+    padding: 4px 18px 14px 50px;
+  }
+}

@@ -5,8 +5,50 @@ import Sparkline from "@/components/charts/sparkline";
 import StatusPill from "@/components/status-pill";
 import type { HealthVenue } from "@/lib/reports";
 import { failureStatus } from "@/lib/status";
-import { count, duration, relativeTime } from "@/lib/format";
+import { count, dateTimeLabel, duration, relativeTime } from "@/lib/format";
 import styles from "./page.module.scss";
+
+// What each failure kind means, so a fortnight of 503s is not read as a scraper
+// to fix.
+const KIND_MEANING: Record<string, string> = {
+  "probe-error": "The probe itself failed — a timeout, a bad status, or a fetch that never completed. Ours to fix.",
+  "source-maintenance": "The venue answered with a maintenance status. Theirs to fix; worth watching if it persists.",
+  "source-queue": "The venue put the probe in a virtual waiting room. Expected around on-sales.",
+  "bot-challenge": "The venue's bot protection challenged the probe instead of answering. Usually a blocked IP rather than an outage.",
+  "no-counts": "The probe completed but reported no counts at all.",
+};
+
+function FailureSummary({ venue, builtAt }: { venue: HealthVenue; builtAt: number }) {
+  const { kinds, messages } = venue.failureSummary;
+  return (
+    <div className={styles.failureSummary}>
+      <ul className={styles.kindList}>
+        {kinds.map((kind) => (
+          <li key={kind.kind}>
+            <span className={styles.kindName}>
+              {kind.kind} × {count(kind.count)}
+            </span>
+            <span className={styles.kindMeaning}>
+              {KIND_MEANING[kind.kind] ?? "Not a kind this report has been taught."}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <ul className={styles.messageList}>
+        {messages.map((entry) => (
+          <li key={`${entry.kind}-${entry.message}`}>
+            <span className={styles.message}>{entry.message ?? "No message"}</span>
+            <span className={styles.messageMeta}>
+              {entry.count > 1
+                ? `${count(entry.count)} times, ${dateTimeLabel(entry.firstAt)} to ${relativeTime(entry.lastAt, builtAt)}`
+                : relativeTime(entry.lastAt, builtAt)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function HealthTable({
   venues,
@@ -140,7 +182,9 @@ export default function HealthTable({
       searchText={(venue) => venue.venue}
       searchPlaceholder="Filter sources…"
       initialSort={{ key: "failures", direction: "desc" }}
-      pageSize={40}
+      renderExpanded={(venue) =>
+        venue.failures === 0 ? null : <FailureSummary venue={venue} builtAt={builtAt} />
+      }
     />
   );
 }

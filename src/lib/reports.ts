@@ -6,8 +6,6 @@
 // whichever snapshot happened to be on disk, and a fresh clone would have no
 // types at all. Run `npm run prepare-data` before building.
 
-import type { Severity } from "./status";
-
 import overviewJson from "@/generated/overview.json";
 import catalogueJson from "@/generated/catalogue.json";
 import llmJson from "@/generated/llm.json";
@@ -29,7 +27,8 @@ export type MovieSummary = {
   showings: number;
   performances: number;
   nextPerformance: number | null;
-  url: string | null;
+  // The listing's page on clusterflick.com.
+  url: string;
 };
 
 export type SilentVenue = {
@@ -53,6 +52,21 @@ export type FieldCoverage = {
   total: number;
   coverage: number;
   examples: MovieSummary[];
+};
+
+// A matched listing whose title normalises differently from the TMDB title it
+// matched - so the match came from the LLM (or a forced match), not the
+// normaliser. Grouped by the pair.
+export type NormaliserPair = {
+  key: string;
+  venueTitle: string;
+  tmdbTitle: string;
+  kind: "article" | "spacing" | "extra words" | "different title";
+  tmdb: { id: number; title: string };
+  listings: number;
+  examples: string[];
+  venues: { id: string; name: string }[];
+  url: string | null;
 };
 
 export type CatalogueReport = {
@@ -90,6 +104,7 @@ export type CatalogueReport = {
     id: string;
     name: string;
     type: string | null;
+    url: string | null;
     filmShowings: number;
     unmatched: number;
     missRate: number;
@@ -100,6 +115,15 @@ export type CatalogueReport = {
     hosts: SilentVenue[];
     unknown: SilentVenue[];
     total: number;
+  };
+  normaliser: {
+    source: {
+      transformed: { tag: string; publishedAt: string; venues: number };
+      scripts: { sha: string; committedAt: string };
+    };
+    checked: number;
+    mismatched: number;
+    pairs: NormaliserPair[];
   };
 };
 
@@ -129,9 +153,26 @@ export type LlmCallSite = {
   byDay: { date: string; calls: number; cacheMisses: number; estimatedCostUsd: number }[];
 };
 
+// What one venue asked of the LLM on a single transform run.
+export type LlmVenueUsage = {
+  venueId: string;
+  calls: number;
+  cacheMisses: number;
+  cacheHitRate: number;
+  estimatedCostUsd: number;
+  maxPromptChars: number;
+  callSites: { name: string; calls: number; cacheMisses: number }[];
+};
+
 export type LlmReport = {
   empty: boolean;
-  window: { firstDate: string; lastDate: string; runs: number; days: number };
+  window: {
+    windowDays: number;
+    firstDate: string;
+    lastDate: string;
+    runs: number;
+    days: number;
+  };
   totals: {
     estimatedCostUsd: number;
     calls: number;
@@ -168,6 +209,15 @@ export type LlmReport = {
     maxPromptChars: number;
     callSites: string[];
   }[];
+  venueUsage:
+    | {
+        available: true;
+        runId: number;
+        runAt: string;
+        venueCount: number;
+        venues: LlmVenueUsage[];
+      }
+    | { available: false; reason: string; venues: [] };
   runs: {
     runId: number;
     date: string;
@@ -209,6 +259,8 @@ export type WorkflowReport = {
   repo: string;
   workflow: string;
   reportsUnassisted: boolean;
+  // Why the unassisted figure is left blank, when it is.
+  unassistedGap: string | null;
   skippedNoOps: number;
   superseded: number;
   runs: number;
@@ -267,6 +319,24 @@ export type HealthVenue = {
   durationMs: { median: number | null; p90: number | null };
   requests: number | null;
   lastProbedAt: string;
+  latestFailed: boolean;
+  currentOutage: {
+    since: string;
+    probes: number;
+    lastOkAt: string | null;
+    kind: string;
+    message: string | null;
+  } | null;
+  failureSummary: {
+    kinds: { kind: string; count: number }[];
+    messages: {
+      kind: string;
+      message: string | null;
+      count: number;
+      firstAt: string;
+      lastAt: string;
+    }[];
+  };
   series: (number | null)[];
 };
 
@@ -280,8 +350,12 @@ export type HealthReport = {
     probes: number;
     venues: number;
   };
-  totals: { failures: number; failureRate: number; venuesWithFailures: number };
-  byKind: { kind: string; count: number; venues: string[] }[];
+  totals: {
+    failures: number;
+    failureRate: number;
+    venuesWithFailures: number;
+    failingNow: string[];
+  };
   byDay: { day: string; probes: number; failures: number; failureRate: number; cycles: number }[];
   cycles: string[];
   venues: HealthVenue[];
@@ -296,18 +370,10 @@ export type HealthReport = {
   }[];
 };
 
-export type Alert = {
-  severity: Severity;
-  title: string;
-  detail: string;
-  href: string;
-};
-
 export type OverviewReport = {
   fetchedAt: string;
   dataGeneratedAt: string;
   release: { combined: ReleaseInfo; matched: ReleaseInfo };
-  alerts: Alert[];
   catalogue: {
     movies: number;
     venues: number;
@@ -335,6 +401,7 @@ export type OverviewReport = {
       successRate: number | null;
       reportsUnassisted: boolean;
       unassistedRate: number | null;
+      unassistedGap: string | null;
       medianDurationMs: number | null;
       lastRun: WorkflowRunRef | null;
     }[];
@@ -344,7 +411,7 @@ export type OverviewReport = {
     venues: number;
     probes: number;
     failureRate: number;
-    venuesWithFailures: number;
+    failingNow: string[];
   } | null;
 };
 

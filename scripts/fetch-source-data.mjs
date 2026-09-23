@@ -16,17 +16,22 @@
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
 //   SKIP_EXISTING - reuse anything already in ./source-data
 
-import { readFile, stat, writeFile, mkdir } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { WORKFLOWS } from "./lib/workflows.mjs";
 import {
+  api,
   downloadAsset,
+  downloadFile,
   hasToken,
   latestRelease,
   listReleases,
   listRunJobs,
   listWorkflowRuns,
   parseJsonl,
+  readJson,
   writeJson,
 } from "./lib/github.mjs";
 
@@ -36,6 +41,7 @@ const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
 
+const unzip = promisify(execFile).bind(null, "unzip");
 
 async function exists(file) {
   try {
@@ -148,6 +154,132 @@ async function fetchVenueHealth() {
   });
 }
 
+// data-transformed: every venue's listings as the transform left them. It is
+// the one place a matched listing still carries the title the venue gave it
+// next to the TMDB title it matched - combine keeps the venue's title only when
+// it differs from the one it picks to display, so the normaliser report cannot
+// be built from combined-data. One asset per venue, around 20MB in all.
+async function fetchTransformed() {
+  await step("transformed data", path.join(OUT, "transformed-release.json"), async () => {
+    const release = await latestRelease("clusterflick/data-transformed");
+    const dir = path.join(OUT, "transformed");
+    // Cleared first so a venue dropped from the pipeline doesn't linger here
+    // from an older release.
+    await rm(dir, { recursive: true, force: true });
+    await mapWithConcurrency(release.assets, 8, (asset) =>
+      downloadAsset(asset, path.join(dir, asset.name)),
+    );
+    await writeJson(path.join(OUT, "transformed-release.json"), {
+      tag: release.tag_name,
+      publishedAt: release.published_at,
+      venues: release.assets.length,
+    });
+    return `${release.tag_name} (${release.assets.length} venues)`;
+  });
+}
+
+// The title normaliser the matcher runs, taken from clusterflick/scripts at the
+// head of main so the report judges titles exactly as the next match run will.
+// Its local requires are followed, so a new helper file doesn't break the build;
+// npm packages resolve from this project's node_modules, which is why
+// `diacritics` is a dependency here.
+async function fetchNormaliser() {
+  await step("title normaliser", path.join(OUT, "normaliser", "source.json"), async () => {
+    const commit = await api(
+      "https://api.github.com/repos/clusterflick/scripts/commits/main",
+      "clusterflick/scripts head",
+    );
+    const dir = path.join(OUT, "normaliser");
+    await rm(dir, { recursive: true, force: true });
+    const queue = ["normalize-title.js"];
+    const seen = new Set();
+    while (queue.length) {
+      const file = queue.shift();
+      if (seen.has(file)) continue;
+      seen.add(file);
+      const destination = path.join(dir, file);
+      await downloadFile(
+        `https://raw.githubusercontent.com/clusterflick/scripts/${commit.sha}/common/${file}`,
+        destination,
+        `common/${file}`,
+      );
+      const source = await readFile(destination, "utf8");
+      for (const [, local] of source.matchAll(/require\("\.\/([^"]+)"\)/g)) {
+        queue.push(local.endsWith(".js") ? local : `${local}.js`);
+      }
+    }
+    await writeJson(path.join(dir, "source.json"), {
+      sha: commit.sha,
+      committedAt: commit.commit.committer.date,
+      files: [...seen],
+    });
+    return `${commit.sha.slice(0, 7)} (${seen.size} files)`;
+  });
+}
+
+// What each venue asked of the LLM on the latest transform run. The monthly log
+// drops the per-venue breakdown, so this comes from the run's own artifacts:
+// the usage report (cost per venue) and the raw per-call records it was built
+// from (which call sites each venue hit). Artifacts expire after a fortnight
+// and can only be downloaded with a token, so without one this records that it
+// is unavailable rather than failing the build.
+async function fetchLlmVenueUsage() {
+  const file = path.join(OUT, "llm-venues.json");
+  await step("llm usage by venue", file, async () => {
+    if (!hasToken) {
+      await writeJson(file, { available: false, reason: "no-token" });
+      return "skipped — artifact downloads need a token";
+    }
+    const repo = "clusterflick/data-transformed";
+    const { artifacts: reports } = await api(
+      `https://api.github.com/repos/${repo}/actions/artifacts?name=llm-usage-report&per_page=10`,
+      `${repo} usage reports`,
+    );
+    const report = reports.find((artifact) => !artifact.expired);
+    if (!report) {
+      await writeJson(file, { available: false, reason: "expired" });
+      return "no unexpired usage report";
+    }
+
+    const runId = report.workflow_run.id;
+    const { artifacts } = await api(
+      `https://api.github.com/repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`,
+      `${repo} run ${runId} artifacts`,
+    );
+    const dir = path.join(OUT, "llm-venues");
+    await rm(dir, { recursive: true, force: true });
+    const wanted = [
+      { artifact: report, into: path.join(dir, "report") },
+      ...artifacts
+        .filter((artifact) => artifact.name.startsWith("llm_usage_") && !artifact.expired)
+        .map((artifact) => ({ artifact, into: path.join(dir, "venues") })),
+    ];
+    await mapWithConcurrency(wanted, 6, async ({ artifact, into }) => {
+      const zip = path.join(dir, `${artifact.name}.zip`);
+      await downloadFile(artifact.archive_download_url, zip, artifact.name, {
+        accept: "application/vnd.github+json",
+      });
+      await unzip(["-o", "-q", zip, "-d", into]);
+      await rm(zip);
+    });
+
+    const summary = await readJson(path.join(dir, "report", "llm-usage-report.json"));
+    const venues = {};
+    for (const venue of (await readdir(path.join(dir, "venues"))).sort()) {
+      venues[venue] = await readJson(path.join(dir, "venues", venue));
+    }
+    await writeJson(file, {
+      available: true,
+      runId,
+      runAt: report.created_at,
+      venueCount: summary.metadata.venueCount,
+      byVenue: summary.byVenue,
+      records: venues,
+    });
+    return `run ${runId} (${Object.keys(summary.byVenue).length} venues used the LLM)`;
+  });
+}
+
 // Every run's jobs are fetched, because `updated_at - run_started_at` is not a
 // build time.
 //
@@ -210,7 +342,28 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
+// A finished run's jobs never change, so their timings are kept between builds
+// in .cache (restored by actions/cache in CI) and only new runs are looked up.
+// Without it every build makes a jobs call per run - around 600 - which is fine
+// nightly and a real share of the token's hourly limit when the site rebuilds
+// after every health cycle.
+const TIMINGS_CACHE = path.join(process.cwd(), ".cache", "run-timings.json");
+
+async function readTimingsCache() {
+  try {
+    return JSON.parse(await readFile(TIMINGS_CACHE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
 async function fetchWorkflowRuns() {
+  const timingsCache = await readTimingsCache();
+  // Everything in this window, cached or new. Written back as the whole cache,
+  // so runs that have aged out of the window drop out of it too.
+  const seen = {};
+  const fetched = {};
+  let lookups = 0;
   const since = Date.now() - RUN_WINDOW_DAYS * 86400000;
   // Sent to GitHub as the `created` filter rather than applied only here - see
   // `listWorkflowRuns`. Seconds precision: the API rejects the fractional form.
@@ -242,12 +395,21 @@ async function fetchWorkflowRuns() {
 
       let skipped = 0;
       await mapWithConcurrency(inWindow, 6, async (run) => {
-        const jobs = await listRunJobs(target.repo, run.id);
-        Object.assign(run, timingsFor(run, jobs));
-        if (target.guardJob && run.conclusion === "success") {
-          run.didNothing = didNothing(jobs, target.guardJob);
-          if (run.didNothing) skipped += 1;
+        const key = `${run.id}-${run.attempt}`;
+        let timings = timingsCache[key];
+        if (!timings) {
+          const jobs = await listRunJobs(target.repo, run.id);
+          timings = timingsFor(run, jobs);
+          if (target.guardJob && run.conclusion === "success") {
+            timings.didNothing = didNothing(jobs, target.guardJob);
+          }
+          // Only a finished attempt's jobs are final.
+          if (run.conclusion) fetched[key] = timings;
+          lookups += 1;
         }
+        seen[key] = timings;
+        Object.assign(run, timings);
+        if (run.didNothing) skipped += 1;
       });
 
       await writeJson(path.join(OUT, "runs", `${target.key}.json`), inWindow);
@@ -272,6 +434,16 @@ async function fetchWorkflowRuns() {
     );
   }
 
+  if (Object.keys(seen).length) {
+    await writeJson(
+      TIMINGS_CACHE,
+      Object.fromEntries(
+        Object.entries(seen).filter(([key]) => timingsCache[key] || fetched[key]),
+      ),
+    );
+  }
+  console.log(`  ${lookups} job lookups, ${Object.keys(seen).length - lookups} from cache`);
+
   await writeJson(path.join(OUT, "runs", "meta.json"), {
     windowDays: RUN_WINDOW_DAYS,
     collectedAt: new Date().toISOString(),
@@ -285,7 +457,10 @@ async function main() {
     `Fetching source data into ./source-data${hasToken ? "" : " (no token — public rate limit)"}`,
   );
   await fetchPipelineOutput();
+  await fetchTransformed();
+  await fetchNormaliser();
   await fetchLlmUsage();
+  await fetchLlmVenueUsage();
   await fetchVenueHealth();
   await fetchWorkflowRuns();
   await writeFile(

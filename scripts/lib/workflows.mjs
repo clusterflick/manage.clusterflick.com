@@ -8,7 +8,8 @@
 // means "finished first time, unaided". The others carry either a
 // rerun-on-failure workflow or `cancel-in-progress`, which makes a later
 // attempt say nothing about whether anyone was involved; they are reported on
-// duration and conclusion alone. This mirrors the reasoning in
+// duration and conclusion alone, and `unassistedGap` is the short reason the
+// pages print in the column instead. This mirrors the reasoning in
 // data-analysed/scripts/workflow-run-stats.js, which writes the badges from
 // the same API.
 export const WORKFLOWS = [
@@ -31,12 +32,14 @@ export const WORKFLOWS = [
     name: "Diff",
     repo: "clusterflick/data-diffed",
     workflow: "diff.yml",
+    unassistedGap: "auto-reruns",
   },
   {
     key: "combine",
     name: "Combine",
     repo: "clusterflick/data-combined",
     workflow: "combine.yml",
+    unassistedGap: "auto-reruns",
   },
   {
     key: "match",
@@ -57,6 +60,7 @@ export const WORKFLOWS = [
     name: "Calendar",
     repo: "clusterflick/data-calendar",
     workflow: "generate_calendar.yml",
+    unassistedGap: "auto-reruns",
   },
   {
     key: "website",
@@ -70,6 +74,7 @@ export const WORKFLOWS = [
     // failures reported 17 superseded builds as 17 failed ones. They are
     // dropped from the window instead, and counted on the page.
     supersedesInFlight: true,
+    unassistedGap: "cancels in flight",
   },
 ];
 

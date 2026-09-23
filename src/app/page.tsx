@@ -1,5 +1,4 @@
 import Link from "next/link";
-import AlertList from "@/components/alert-list";
 import Panel from "@/components/panel";
 import PageHeader from "@/components/page-header";
 import StatTile from "@/components/stat-tile";
@@ -20,9 +19,8 @@ import {
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
-  const { catalogue, llm, pipeline, health, alerts } = overview;
-  // Rendered at build time, so it is the age at build rather than at read. The
-  // line under the title says so instead of implying the page is live.
+  const { catalogue, llm, pipeline, health } = overview;
+  // Rendered at build time, so it is the age at build rather than at read.
   const builtAt = new Date(overview.fetchedAt);
 
   const unassisted = pipeline.workflows.filter((workflow) => workflow.reportsUnassisted);
@@ -36,20 +34,14 @@ export default function OverviewPage() {
     <>
       <PageHeader
         title="Overview"
-        lede="Where the Clusterflick pipeline stands: what the catalogue looks like, what the LLM cost, how reliably the flows ran, and which sources stopped answering."
         meta={
           <>
             Built {dateTimeLabel(builtAt.toISOString())} from data-combined{" "}
             <span className="mono">{overview.release.combined.tag}</span>, generated{" "}
-            {relativeTime(overview.dataGeneratedAt, builtAt.getTime())}. Figures are
-            fixed at build time — rebuild to refresh.
+            {relativeTime(overview.dataGeneratedAt, builtAt.getTime())}
           </>
         }
       />
-
-      <Panel title="Needs attention" note="Every check the reports run, in one list. Each links to the page that explains it.">
-        <AlertList alerts={alerts} />
-      </Panel>
 
       <h2 className={styles.sectionHeading}>Catalogue</h2>
       <StatGrid>
@@ -132,7 +124,7 @@ export default function OverviewPage() {
 
       <h2 className={styles.sectionHeading}>Pipeline</h2>
       <Panel
-        note={`Completed runs over the last ${pipeline.windowDays} days. "Median run" is execution time across the jobs that ran, excluding time queued for a runner. "Unassisted" means the run finished first time with nobody stepping in — only meaningful on the three flows with no auto-rerun of their own.`}
+        note={`Completed runs over the last ${pipeline.windowDays} days.`}
         flush
       >
         <div className={styles.scroll}>
@@ -167,8 +159,11 @@ export default function OverviewPage() {
                         {percent(workflow.unassistedRate)}
                       </StatusPill>
                     ) : (
-                      <span className={styles.na} title="Auto-rerun or cancel-in-progress makes this figure meaningless for this flow">
-                        n/a
+                      <span
+                        className={styles.na}
+                        title="A later attempt on this flow may be its own automation rather than a person, so first-attempt success can't be read as unaided"
+                      >
+                        {workflow.unassistedGap ?? "—"}
                       </span>
                     )}
                   </td>
@@ -201,9 +196,14 @@ export default function OverviewPage() {
               href="/venues"
             />
             <StatTile
-              label="Sources with failures"
-              value={`${health.venuesWithFailures} / ${health.venues}`}
-              detail="At least one probe came back with nothing"
+              label="Failing now"
+              value={`${health.failingNow.length} / ${health.venues}`}
+              detail={
+                health.failingNow.length
+                  ? health.failingNow.join(", ")
+                  : "Every source answered its latest probe"
+              }
+              severity={health.failingNow.length ? "warning" : "good"}
               href="/venues"
             />
             {worstUnassisted && (

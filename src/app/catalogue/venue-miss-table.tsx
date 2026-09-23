@@ -16,7 +16,13 @@ export default function VenueMissTable({ venues }: { venues: Venue[] }) {
       sortValue: (venue) => venue.name.toLowerCase(),
       render: (venue) => (
         <div className={styles.titleCell}>
-          {venue.name}
+          {venue.url ? (
+            <a href={venue.url} target="_blank" rel="noreferrer">
+              {venue.name}
+            </a>
+          ) : (
+            venue.name
+          )}
           <div className={`${styles.categories} mono`}>{venue.id}</div>
         </div>
       ),
@@ -75,7 +81,6 @@ export default function VenueMissTable({ venues }: { venues: Venue[] }) {
       rowKey={(venue) => venue.id}
       searchText={(venue) => `${venue.name} ${venue.id} ${venue.type ?? ""}`}
       searchPlaceholder="Filter venues…"
-      pageSize={30}
     />
   );
 }

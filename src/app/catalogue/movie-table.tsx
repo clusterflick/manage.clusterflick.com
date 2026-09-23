@@ -23,13 +23,9 @@ export default function MovieTable({
       sortValue: (movie) => movie.title.toLowerCase(),
       render: (movie) => (
         <div className={styles.titleCell}>
-          {movie.url ? (
-            <a href={movie.url} target="_blank" rel="noreferrer">
-              {movie.title}
-            </a>
-          ) : (
-            movie.title
-          )}
+          <a href={movie.url} target="_blank" rel="noreferrer">
+            {movie.title}
+          </a>
           {movie.year && <span className={styles.year}>{movie.year}</span>}
           <div className={styles.categories}>{movie.categories.join(" · ")}</div>
         </div>
@@ -85,7 +81,6 @@ export default function MovieTable({
       searchPlaceholder="Filter by title, venue or category…"
       initialSort={showNext ? { key: "next", direction: "asc" } : undefined}
       emptyMessage={emptyMessage}
-      pageSize={40}
     />
   );
 }
