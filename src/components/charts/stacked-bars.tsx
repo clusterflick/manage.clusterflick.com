@@ -13,11 +13,21 @@ export type StackSeries = {
   values: number[];
 };
 
+// A second measure drawn as a line over the bars, on its own axis at the
+// right. For the context that says how to read a bar's height - how many runs
+// a day's spend was spread over - rather than another part of the stack.
+export type StackOverlay = {
+  label: string;
+  values: number[];
+  format: FormatKey;
+};
+
 type Props = {
   series: StackSeries[];
   labels: string[];
   height?: number;
   format: FormatKey;
+  overlay?: StackOverlay;
 };
 
 // A stacked bar per label. Only ever used where the parts genuinely sum to a
@@ -38,10 +48,11 @@ export default function StackedBars({
   labels,
   height = 240,
   format,
+  overlay,
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 720;
-  const padding = { top: 12, right: 14, bottom: 26, left: 52 };
+  const padding = { top: 12, right: overlay ? 40 : 14, bottom: 26, left: 52 };
 
   const { totals, max, barWidth, innerWidth, innerHeight } = useMemo(() => {
     const sums = labels.map((_, index) =>
@@ -78,6 +89,31 @@ export default function StackedBars({
   const formatValue = VALUE_FORMAT[format];
   const tickLabel = tickFormatter(format, ticks);
   const showLabel = labelledIndices(labels.length, 8);
+
+  // The overlay's axis shares the gridlines already drawn for the bars, so a
+  // right-hand label sits on a line rather than floating between two. Its step
+  // is the smallest nice value that fits the overlay's maximum into the same
+  // number of intervals.
+  const overlayAxis = (() => {
+    if (!overlay) return null;
+    const intervals = Math.max(ticks.length - 1, 1);
+    const overlayMax = Math.max(...overlay.values, 0);
+    // A count can't step by half a run, so its step is at least one.
+    const whole = overlay.format === "count" || overlay.format === "compact";
+    const rough = niceStep(overlayMax / intervals);
+    const step = whole ? Math.max(1, Math.ceil(rough)) : rough;
+    const domain = Math.max(step * intervals, 1);
+    const yOf = (value: number) => baseline - (value / domain) * innerHeight;
+    const values = ticks.map((_, index) => step * index);
+    return {
+      yOf,
+      values,
+      label: tickFormatter(overlay.format, values),
+      path: overlay.values
+        .map((value, index) => `${index === 0 ? "M" : "L"}${xOf(index)},${yOf(value)}`)
+        .join(" "),
+    };
+  })();
 
   return (
     <div className={styles.wrap}>
@@ -147,6 +183,42 @@ export default function StackedBars({
           );
         })}
 
+        {overlay && overlayAxis && (
+          <g pointerEvents="none">
+            {overlayAxis.values.map((value) => (
+              <text
+                key={`overlay-tick-${value}`}
+                x={width - padding.right + 6}
+                y={overlayAxis.yOf(value)}
+                textAnchor="start"
+                dominantBaseline="middle"
+                className={styles.axisText}
+              >
+                {overlayAxis.label(value)}
+              </text>
+            ))}
+            <path
+              d={overlayAxis.path}
+              fill="none"
+              stroke="var(--text-primary)"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {overlay.values.map((value, index) => (
+              <circle
+                key={`overlay-point-${index}`}
+                cx={xOf(index)}
+                cy={overlayAxis.yOf(value)}
+                r={hover === index ? 4 : 2.5}
+                fill="var(--text-primary)"
+                stroke="var(--surface-1)"
+                strokeWidth={1.5}
+              />
+            ))}
+          </g>
+        )}
+
         {labels.map((label, index) =>
           showLabel.has(index) ? (
             <text
@@ -193,6 +265,19 @@ export default function StackedBars({
               {formatValue(totals[hover])}
             </span>
           </div>
+          {overlay && (
+            <div className={styles.tooltipRow}>
+              <span
+                className={styles.swatch}
+                style={{ background: "var(--text-primary)", borderRadius: "50%" }}
+                aria-hidden="true"
+              />
+              <span className={styles.tooltipLabel}>{overlay.label}</span>
+              <span className={`${styles.tooltipValue} numeric`}>
+                {VALUE_FORMAT[overlay.format](overlay.values[hover] ?? 0)}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -207,6 +292,16 @@ export default function StackedBars({
             {entry.label}
           </li>
         ))}
+        {overlay && (
+          <li className={styles.legendItem}>
+            <span
+              className={styles.swatch}
+              style={{ background: "var(--text-primary)", borderRadius: "50%" }}
+              aria-hidden="true"
+            />
+            {overlay.label} (line, right axis)
+          </li>
+        )}
       </ul>
     </div>
   );
