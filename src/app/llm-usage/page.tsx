@@ -138,12 +138,17 @@ export default function LlmUsagePage() {
 
       <Panel
         title="Cost by call site"
-        note="Each day's spend split by the stage that made the call. This is what says whether a rise came from more listings needing the LLM or from one stage losing its cache."
+        note="Each day's spend split by the stage that made the call. This is what says whether a rise came from more listings needing the LLM or from one stage losing its cache. The line is the number of transform runs that day: a tall bar with the line up is the same work paid for more often, one with the line flat is more work."
       >
         <StackedBars
           series={stacked}
           labels={dayLabels}
           format="money"
+          overlay={{
+            label: "Transform runs",
+            values: llm.days.map((day) => day.runs),
+            format: "count",
+          }}
         />
       </Panel>
 
