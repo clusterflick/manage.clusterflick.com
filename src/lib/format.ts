@@ -86,8 +86,9 @@ export function dateTimeLabel(value: string | number | null | undefined): string
   }).format(new Date(value));
 }
 
-// "3 hours ago". Rendered at build time, so it describes the moment the site
-// was built - the pages that use it say so alongside.
+// "3 hours ago", measured from `from`. Pages render it through
+// `@/components/relative-time`, which measures from the viewer's clock once
+// the page has loaded rather than from when the site was built.
 export function relativeTime(value: string | number | null | undefined, from = Date.now()): string {
   if (value === null || value === undefined) return "—";
   const deltaMs = from - new Date(value).getTime();

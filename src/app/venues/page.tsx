@@ -6,6 +6,7 @@ import LineChart from "@/components/charts/line-chart";
 import HealthTable from "./health-table";
 import { health, overview } from "@/lib/reports";
 import StatusPill from "@/components/status-pill";
+import RelativeTime from "@/components/relative-time";
 import { failureStatus } from "@/lib/status";
 import {
   count,
@@ -13,7 +14,6 @@ import {
   dateTimeLabel,
   duration,
   percent,
-  relativeTime,
 } from "@/lib/format";
 import styles from "./page.module.scss";
 
@@ -48,7 +48,12 @@ export default function VenuesPage() {
             ? `${failing.length} ${failing.length === 1 ? "source is" : "sources are"} failing`
             : "Every source is answering"
         }
-        note={`As of the latest probe cycle, ${relativeTime(lastCycleAt, builtAt)} (${dateTimeLabel(lastCycleAt)}).`}
+        note={
+          <>
+            As of the latest probe cycle, <RelativeTime value={lastCycleAt} builtAt={builtAt} /> (
+            {dateTimeLabel(lastCycleAt)}).
+          </>
+        }
         actions={
           <StatusPill severity={failing.length ? "critical" : "good"}>
             {failing.length ? `${failing.length} failing` : "all clear"}

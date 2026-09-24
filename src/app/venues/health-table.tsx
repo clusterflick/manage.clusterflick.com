@@ -5,7 +5,8 @@ import Sparkline from "@/components/charts/sparkline";
 import StatusPill from "@/components/status-pill";
 import type { HealthVenue } from "@/lib/reports";
 import { failureStatus } from "@/lib/status";
-import { count, dateTimeLabel, duration, relativeTime } from "@/lib/format";
+import RelativeTime from "@/components/relative-time";
+import { count, dateTimeLabel, duration } from "@/lib/format";
 import styles from "./page.module.scss";
 
 // What each failure kind means, so a fortnight of 503s is not read as a scraper
@@ -39,9 +40,9 @@ function FailureSummary({ venue, builtAt }: { venue: HealthVenue; builtAt: numbe
           <li key={`${entry.kind}-${entry.message}`}>
             <span className={styles.message}>{entry.message ?? "No message"}</span>
             <span className={styles.messageMeta}>
-              {entry.count > 1
-                ? `${count(entry.count)} times, ${dateTimeLabel(entry.firstAt)} to ${relativeTime(entry.lastAt, builtAt)}`
-                : relativeTime(entry.lastAt, builtAt)}
+              {entry.count > 1 &&
+                `${count(entry.count)} times, ${dateTimeLabel(entry.firstAt)} to `}
+              <RelativeTime value={entry.lastAt} builtAt={builtAt} />
             </span>
           </li>
         ))}
@@ -168,7 +169,7 @@ export default function HealthTable({
       sortValue: (venue) => venue.lastProbedAt,
       render: (venue) => (
         <span className={styles.muted}>
-          {relativeTime(venue.lastProbedAt, builtAt)}
+          <RelativeTime value={venue.lastProbedAt} builtAt={builtAt} />
         </span>
       ),
     },

@@ -4,6 +4,7 @@ import PageHeader from "@/components/page-header";
 import StatTile from "@/components/stat-tile";
 import StatGrid from "@/components/stat-tile/grid";
 import StatusPill from "@/components/status-pill";
+import RelativeTime from "@/components/relative-time";
 import Sparkline from "@/components/charts/sparkline";
 import { overview } from "@/lib/reports";
 import { cacheStatus, failureStatus, rateStatus } from "@/lib/status";
@@ -13,14 +14,12 @@ import {
   duration,
   money,
   percent,
-  relativeTime,
   signedPercent,
 } from "@/lib/format";
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
   const { catalogue, llm, pipeline, health } = overview;
-  // Rendered at build time, so it is the age at build rather than at read.
   const builtAt = new Date(overview.fetchedAt);
 
   const unassisted = pipeline.workflows.filter((workflow) => workflow.reportsUnassisted);
@@ -38,7 +37,7 @@ export default function OverviewPage() {
           <>
             Built {dateTimeLabel(builtAt.toISOString())} from data-combined{" "}
             <span className="mono">{overview.release.combined.tag}</span>, generated{" "}
-            {relativeTime(overview.dataGeneratedAt, builtAt.getTime())}
+            <RelativeTime value={overview.dataGeneratedAt} builtAt={builtAt.getTime()} />
           </>
         }
       />
@@ -171,7 +170,10 @@ export default function OverviewPage() {
                   <td className={styles.lastRun}>
                     {workflow.lastRun ? (
                       <a href={workflow.lastRun.url} target="_blank" rel="noreferrer">
-                        {relativeTime(workflow.lastRun.startedAt, builtAt.getTime())}
+                        <RelativeTime
+                          value={workflow.lastRun.startedAt}
+                          builtAt={builtAt.getTime()}
+                        />
                       </a>
                     ) : (
                       "—"
