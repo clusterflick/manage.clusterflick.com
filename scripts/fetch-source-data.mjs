@@ -259,6 +259,9 @@ async function fetchLlmVenueUsage() {
       await downloadFile(artifact.archive_download_url, zip, artifact.name, {
         accept: "application/vnd.github+json",
       });
+      // Venue artifacts share one directory, and concurrent unzips racing to
+      // create it fail with "File exists" - so make sure it's there first.
+      await mkdir(into, { recursive: true });
       await unzip(["-o", "-q", zip, "-d", into]);
       await rm(zip);
     });
