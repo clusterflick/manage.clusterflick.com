@@ -8,7 +8,7 @@ import type {
   PresenceFlapGroup,
 } from "@/lib/reports";
 import { count, dateTimeLabel } from "@/lib/format";
-import { MatchTimeline, PresenceTimeline, filmLetter } from "./flap-timeline";
+import { MatchTimeline, PresenceTimeline, VenueTimeline, filmLetter } from "./flap-timeline";
 import styles from "./page.module.scss";
 
 const venueNames = (venues: { name: string }[]) =>
@@ -141,7 +141,8 @@ export function MatchFlapTable({
   );
 }
 
-// Listings that dropped out of a release and came back in a later one.
+// Venues whose listings dropped out of a release and came back in a later one,
+// with the films that went missing under the toggle.
 export function PresenceFlapTable({
   groups,
   releases,
@@ -151,21 +152,46 @@ export function PresenceFlapTable({
 }) {
   const columns: Column<PresenceFlapGroup>[] = [
     {
-      key: "film",
-      header: "Film",
-      sortValue: (group) => group.film.title.toLowerCase(),
+      key: "venue",
+      header: "Venue",
+      sortValue: (group) => group.venue.name.toLowerCase(),
       render: (group) => (
         <div className={styles.titleCell}>
-          <FilmTitle film={group.film} />
-          {!group.film.matched && <span className={styles.year}>unmatched</span>}
+          {group.venue.url ? (
+            <a href={group.venue.url} target="_blank" rel="noreferrer">
+              {group.venue.name}
+            </a>
+          ) : (
+            group.venue.name
+          )}
+          <div className={`${styles.categories} mono`}>{group.venue.id}</div>
         </div>
       ),
     },
     {
       key: "timeline",
-      header: "Each release, oldest first",
+      header: "Missing per release, oldest first",
       render: (group) => (
-        <PresenceTimeline timeline={group.listings[0].timeline} releases={releases} />
+        <VenueTimeline
+          missing={group.missing}
+          venueListings={group.venueListings}
+          releases={releases}
+        />
+      ),
+    },
+    {
+      key: "films",
+      header: "Films affected",
+      sortValue: (group) => group.listings.length,
+      render: (group) => (
+        <div>
+          <span className={styles.venues}>
+            {[...new Set(group.listings.map((listing) => listing.film.title))].join(", ")}
+          </span>
+          {group.listings.length > 1 && (
+            <div className={styles.categories}>{count(group.listings.length)} listings</div>
+          )}
+        </div>
       ),
     },
     {
@@ -175,14 +201,6 @@ export function PresenceFlapTable({
       width: "100px",
       sortValue: (group) => group.dropouts,
       render: (group) => count(group.dropouts),
-    },
-    {
-      key: "venues",
-      header: "Venues",
-      sortValue: (group) => group.listings.length,
-      render: (group) => (
-        <VenuesCell venues={group.venues} listings={group.listings.length} />
-      ),
     },
     {
       key: "lastReturnAt",
@@ -200,32 +218,31 @@ export function PresenceFlapTable({
       columns={columns}
       rowKey={(group) => group.key}
       searchText={(group) =>
-        `${group.film.title} ${group.film.id} ${venueNames(group.venues)} ${group.listings
-          .map((listing) => listing.id)
+        `${group.venue.name} ${group.venue.id} ${group.listings
+          .map((listing) => `${listing.film.title} ${listing.id}`)
           .join(" ")}`
       }
-      searchPlaceholder="Filter by film or venue…"
+      searchPlaceholder="Filter by venue or film…"
       initialSort={{ key: "lastReturnAt", direction: "desc" }}
       emptyMessage="No listing dropped out of a release and came back."
-      renderExpanded={(group) =>
-        group.listings.length < 2 ? null : (
-          <ul className={styles.flapListings}>
-            {group.listings.map((listing) => (
-              <li key={listing.id} className={styles.flapListing}>
-                <span>
-                  {listing.venue.name}
-                  <span className={`${styles.categories} mono`}> {listing.id}</span>
-                </span>
-                <PresenceTimeline timeline={listing.timeline} releases={releases} />
-                <span className={styles.muted}>
-                  missing from {count(listing.missedRuns)}{" "}
-                  {listing.missedRuns === 1 ? "release" : "releases"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )
-      }
+      renderExpanded={(group) => (
+        <ul className={styles.flapListings}>
+          {group.listings.map((listing) => (
+            <li key={listing.id} className={styles.flapListing}>
+              <span>
+                <FilmTitle film={listing.film} />
+                {!listing.film.matched && <span className={styles.year}>unmatched</span>}
+                <span className={`${styles.categories} mono`}> {listing.id}</span>
+              </span>
+              <PresenceTimeline timeline={listing.timeline} releases={releases} />
+              <span className={styles.muted}>
+                missing from {count(listing.missedRuns)}{" "}
+                {listing.missedRuns === 1 ? "release" : "releases"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     />
   );
 }

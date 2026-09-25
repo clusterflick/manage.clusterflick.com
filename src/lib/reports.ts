@@ -97,22 +97,25 @@ export type MatchFlapGroup = {
   lastFlipAt: string | null;
 };
 
-// Listings of one film that dropped out of a release and came back, while they
-// still had performances to come. "out" is a run missed that way; null is any
-// other run it was not listed in - before its first, after its last, or a gap
-// it left with nothing left to show.
+// A venue whose listings dropped out of a release and came back, while they
+// still had performances to come. Each listing's timeline is "in", "out" for a
+// run missed that way, or null for any other run it was not listed in - before
+// its first, after its last, or a gap it left with nothing left to show.
 export type PresenceFlapGroup = {
   key: string;
-  film: FlappingFilm;
-  venues: { id: string; name: string }[];
+  venue: { id: string; name: string; url: string | null };
   listings: {
     id: string;
-    venue: { id: string; name: string };
+    film: FlappingFilm;
     timeline: ("in" | "out" | null)[];
     dropouts: number;
     missedRuns: number;
     lastReturnAt: string | null;
   }[];
+  // Per release: how many of these listings were missing, and how many
+  // listings the venue carried in all.
+  missing: number[];
+  venueListings: number[];
   dropouts: number;
   lastReturnAt: string | null;
 };

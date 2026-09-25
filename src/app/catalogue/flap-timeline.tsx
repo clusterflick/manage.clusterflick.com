@@ -86,3 +86,40 @@ export function PresenceTimeline({
     </span>
   );
 }
+
+// A venue's drop-outs per release: how many of its listings went missing with
+// performances still to come. The count is in the cell, so a run that lost
+// seven at once stands apart from seven runs that lost one each.
+export function VenueTimeline({
+  missing,
+  venueListings,
+  releases,
+}: {
+  missing: number[];
+  venueListings: number[];
+  releases: FlappingRelease[];
+}) {
+  return (
+    <span className={styles.timeline}>
+      {missing.map((gone, run) => (
+        <span
+          key={releases[run].tag}
+          className={
+            gone > 0
+              ? styles.cellOut
+              : venueListings[run] > 0
+                ? styles.cellIn
+                : styles.cellAbsent
+          }
+          title={`${runLabel(releases[run])} — ${
+            gone > 0
+              ? `${gone} missing with performances still to come; ${venueListings[run]} listed`
+              : `${venueListings[run]} listed`
+          }`}
+        >
+          {gone > 0 ? (gone > 9 ? "+" : gone) : ""}
+        </span>
+      ))}
+    </span>
+  );
+}

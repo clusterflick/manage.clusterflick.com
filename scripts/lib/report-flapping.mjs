@@ -17,12 +17,13 @@
 //   this. That is three quarters of the gaps, and none of them are faults, so
 //   a gap only counts when the listing still had something ahead of it.
 //
-// Both are grouped by film rather than listed per showing, because a matcher
-// flap usually happens to every venue listing the same title at once - the
-// three Curzons below one row, not three.
+// Match flaps are grouped by film, because a matcher flap usually happens to
+// every venue listing the same title at once - three Curzons are one row, not
+// three. Presence flaps are grouped by venue, because a drop-out is usually
+// the venue's retrieval coming back short.
 
 import { groupBy } from "./stats.mjs";
-import { movieUrl } from "./clusterflick-urls.mjs";
+import { movieUrl, venueUrl } from "./clusterflick-urls.mjs";
 
 // Everything the pages need to know about a film a listing sat under. Linked
 // only when it is still in the latest release - an older id's page is gone.
@@ -173,25 +174,48 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
     };
   });
 
-  // Presence flaps grouped by the film the listing last sat under.
-  const presenceGroups = [...groupBy(presenceFlaps, (flap) => flap.movieId)].map(
-    ([movieId, flaps]) => {
+  // Presence flaps grouped by venue, then film. A drop-out is almost always
+  // the venue's own retrieval coming back short - Enfield losing eight
+  // listings in one run, a ticketing page answering in a different shape - so
+  // the venue is the thing to look at first, and the films say what went
+  // missing from it.
+  const listingsAt = (venueId) =>
+    history.map(
+      (run) => Object.values(run.showings).filter((showing) => showing.venueId === venueId).length,
+    );
+  const presenceGroups = [...groupBy(presenceFlaps, (flap) => flap.venue.id)].map(
+    ([venueId, flaps]) => {
       const listings = flaps
-        .map(({ id, venue, timeline, dropouts, missedRuns, lastReturnAt }) => ({
+        .map(({ id, timeline, dropouts, missedRuns, lastReturnAt, movieId }) => ({
           id,
-          venue,
+          film: filmOf(movieId, history, latestMovies),
           timeline,
           dropouts,
           missedRuns,
           lastReturnAt,
         }))
-        .sort((a, b) => b.dropouts - a.dropouts || a.venue.name.localeCompare(b.venue.name));
+        // In the order they went missing, so listings that dropped together
+        // sit together.
+        .sort(
+          (a, b) =>
+            a.timeline.indexOf("out") - b.timeline.indexOf("out") ||
+            a.film.title.localeCompare(b.film.title),
+        );
       return {
-        key: movieId,
-        film: filmOf(movieId, history, latestMovies),
-        venues: [...new Map(listings.map((l) => [l.venue.id, l.venue])).values()],
+        key: venueId,
+        venue: {
+          ...flaps[0].venue,
+          url: venues[venueId] ? venueUrl(venues[venueId]) : null,
+        },
         listings,
-        dropouts: Math.max(...listings.map((listing) => listing.dropouts)),
+        // Per run, how many of these listings were missing, against how many
+        // the venue carried in all - eight gone from sixty-nine reads very
+        // differently from eight gone from eight.
+        missing: history.map(
+          (_, run) => listings.filter((listing) => listing.timeline[run] === "out").length,
+        ),
+        venueListings: listingsAt(venueId),
+        dropouts: listings.reduce((total, listing) => total + listing.dropouts, 0),
         lastReturnAt: latest(listings.map((listing) => listing.lastReturnAt)),
       };
     },

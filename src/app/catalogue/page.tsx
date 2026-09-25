@@ -155,16 +155,19 @@ export default function CataloguePage() {
 
       <Panel
         id="flapping-presence"
-        title={`${count(flapping.presence.listings)} listings dropping out and coming back`}
+        title={`${count(flapping.presence.listings)} listings dropping out and coming back, at ${count(flapping.presence.groups.length)} venues`}
         note={
           <>
             Venue listings missing from a release between two they were in,
             while they still had performances to come — across {flapWindow}. A
             listing whose last performance has passed drops out on its own and
             comes back under the same id when the venue adds a date, as a
-            monthly event does, so those gaps are left out. Marked × where it
-            went missing with dates ahead; blank where it wasn’t listed for any
-            other reason. Grouped by film.
+            monthly event does, so those gaps are left out. Grouped by venue,
+            since a drop-out is usually the venue’s retrieval coming back
+            short: each cell counts how many of its listings went missing in
+            that release, so several films lost in one run stand out from one
+            film lost over several. The films affected are under the toggle,
+            each marked × where it went missing.
           </>
         }
         flush
