@@ -97,9 +97,10 @@ export type MatchFlapGroup = {
   lastFlipAt: string | null;
 };
 
-// Listings of one film that dropped out of a release and came back. "out" is a
-// run missed between two it was in; null is before it was first listed or
-// after it was last.
+// Listings of one film that dropped out of a release and came back, while they
+// still had performances to come. "out" is a run missed that way; null is any
+// other run it was not listed in - before its first, after its last, or a gap
+// it left with nothing left to show.
 export type PresenceFlapGroup = {
   key: string;
   film: FlappingFilm;

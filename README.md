@@ -60,7 +60,8 @@ seen rather than making ~600 jobs calls against the token's rate limit.
 
 Flapping is found by following each venue listing through the recent
 `data-combined` releases. Each release is around 20MB, and all that matters here
-is which film every listing sat under, so each is reduced to that (around 550KB)
+is which film every listing sat under and when its last performance is, so each
+is reduced to that (around 850KB)
 and kept in `./.cache/combined-history` by tag. Releases never change once
 published, so a rebuild downloads only the ones it hasn't seen.
 

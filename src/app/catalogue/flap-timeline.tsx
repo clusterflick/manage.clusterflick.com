@@ -76,8 +76,8 @@ export function PresenceTimeline({
             state === "in"
               ? "listed"
               : state === "out"
-                ? "missing, and back later"
-                : "not listed yet, or finished"
+                ? "missing with performances still to come"
+                : "not listed"
           }`}
         >
           {state === "out" ? "×" : ""}

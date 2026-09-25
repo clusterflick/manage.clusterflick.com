@@ -159,10 +159,12 @@ export default function CataloguePage() {
         note={
           <>
             Venue listings missing from a release between two they were in,
-            across {flapWindow}. A listing that disappears and stays gone has
-            finished; one that comes back was dropped by something upstream in
-            between. Marked × where it was missing; blank before it was first
-            listed or after it was last. Grouped by film.
+            while they still had performances to come — across {flapWindow}. A
+            listing whose last performance has passed drops out on its own and
+            comes back under the same id when the venue adds a date, as a
+            monthly event does, so those gaps are left out. Marked × where it
+            went missing with dates ahead; blank where it wasn’t listed for any
+            other reason. Grouped by film.
           </>
         }
         flush

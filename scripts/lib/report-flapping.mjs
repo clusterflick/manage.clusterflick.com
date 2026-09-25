@@ -11,8 +11,11 @@
 //   shows a different film on alternate days. Moving to and from "unmatched"
 //   counts too: a match that only sometimes happens.
 // - Presence flapping: the listing is in a release, missing from the next, and
-//   back after that. A listing that disappears and stays gone has finished; one
-//   that comes back was dropped by something upstream in between.
+//   back after that, while it still had performances to come. A listing whose
+//   last performance has passed drops out on its own, and comes back under the
+//   same id when the venue adds a date - the Ritzy's monthly events do exactly
+//   this. That is three quarters of the gaps, and none of them are faults, so
+//   a gap only counts when the listing still had something ahead of it.
 //
 // Both are grouped by film rather than listed per showing, because a matcher
 // flap usually happens to every venue listing the same title at once - the
@@ -63,23 +66,36 @@ function matchFlapsOf(timeline, history) {
 }
 
 // A listing flaps in and out when it is missing from a run between two it was
-// in. Absence before its first run or after its last is not a flap - it had
-// not been listed yet, or it has finished.
-function presenceFlapsOf(timeline, history) {
+// in, having still had a performance ahead of it when it went. Absence before
+// its first run or after its last is not a flap - it had not been listed yet,
+// or it has finished - and nor is a gap it left with nothing left to show.
+//
+// Returns a state per run: "in", "out" for a flap, or null for anything else.
+function presenceFlapsOf(showingId, timeline, history) {
   const first = timeline.findIndex((movieId) => movieId !== null);
   const last = timeline.findLastIndex((movieId) => movieId !== null);
+  const states = timeline.map((movieId) => (movieId === null ? null : "in"));
   let dropouts = 0;
   let missedRuns = 0;
   let lastReturnAt = null;
-  for (let index = first + 1; index <= last; index += 1) {
-    if (timeline[index] === null) {
-      missedRuns += 1;
-      if (timeline[index - 1] !== null) dropouts += 1;
-    } else if (timeline[index - 1] === null) {
-      lastReturnAt = history[index].publishedAt;
+  let index = first + 1;
+  while (index <= last) {
+    if (timeline[index] !== null) {
+      index += 1;
+      continue;
     }
+    const end = timeline.findIndex((movieId, at) => at > index && movieId !== null);
+    const lastPerformance = history[index - 1].showings[showingId].lastPerformance;
+    const droppedAt = Date.parse(history[index].publishedAt);
+    if (lastPerformance !== null && lastPerformance >= droppedAt) {
+      dropouts += 1;
+      missedRuns += end - index;
+      lastReturnAt = history[end].publishedAt;
+      for (let at = index; at < end; at += 1) states[at] = "out";
+    }
+    index = end;
   }
-  return { first, last, dropouts, missedRuns, lastReturnAt };
+  return { dropouts, missedRuns, lastReturnAt, states, last };
 }
 
 const venueOf = (id, venues) => ({ id, name: venues[id]?.name ?? id });
@@ -103,21 +119,12 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
       matchFlaps.push({ id: showingId, venue, timeline, ...match });
     }
 
-    const presence = presenceFlapsOf(timeline, history);
+    const presence = presenceFlapsOf(showingId, timeline, history);
     if (presence.dropouts > 0) {
       presenceFlaps.push({
         id: showingId,
         venue,
-        // "in", "out" between two runs it was in, or blank before it was first
-        // listed and after it was last - so the page can tell a gap from a
-        // listing that hadn't started or had finished.
-        timeline: timeline.map((movieId, index) =>
-          movieId !== null
-            ? "in"
-            : index > presence.first && index < presence.last
-              ? "out"
-              : null,
-        ),
+        timeline: presence.states,
         dropouts: presence.dropouts,
         missedRuns: presence.missedRuns,
         lastReturnAt: presence.lastReturnAt,
