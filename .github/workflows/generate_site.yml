@@ -49,8 +49,9 @@ jobs:
           static_site_generator: next
           generator_config_file: ./next.config.ts
       - run: npm ci
-      # Job timings for finished runs, carried between builds so an hourly
-      # rebuild looks up only the runs it hasn't seen - see TIMINGS_CACHE in
+      # Job timings for finished runs and the reduced data-combined history,
+      # carried between builds so an hourly rebuild looks up only the runs and
+      # releases it hasn't seen - see TIMINGS_CACHE and HISTORY_CACHE in
       # scripts/fetch-source-data.mjs. A fresh key every build (caches are
       # immutable) restoring from the newest earlier one.
       - uses: actions/cache@v5

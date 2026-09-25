@@ -69,6 +69,55 @@ export type NormaliserPair = {
   url: string | null;
 };
 
+// A film a flapping listing sat under in one run or another.
+export type FlappingFilm = {
+  id: string;
+  title: string;
+  matched: boolean;
+  // Its page on clusterflick.com, while it is still in the latest release.
+  url: string | null;
+};
+
+// A group of listings flipping between the same films. Each listing's timeline
+// has one entry per release: an index into `films`, or null where it was not
+// listed.
+export type MatchFlapGroup = {
+  key: string;
+  films: FlappingFilm[];
+  kind: "sometimes unmatched" | "between films";
+  venues: { id: string; name: string }[];
+  listings: {
+    id: string;
+    venue: { id: string; name: string };
+    switches: number;
+    lastFlipAt: string | null;
+    timeline: (number | null)[];
+  }[];
+  switches: number;
+  lastFlipAt: string | null;
+};
+
+// Listings of one film that dropped out of a release and came back. "out" is a
+// run missed between two it was in; null is before it was first listed or
+// after it was last.
+export type PresenceFlapGroup = {
+  key: string;
+  film: FlappingFilm;
+  venues: { id: string; name: string }[];
+  listings: {
+    id: string;
+    venue: { id: string; name: string };
+    timeline: ("in" | "out" | null)[];
+    dropouts: number;
+    missedRuns: number;
+    lastReturnAt: string | null;
+  }[];
+  dropouts: number;
+  lastReturnAt: string | null;
+};
+
+export type FlappingRelease = { tag: string; publishedAt: string };
+
 export type CatalogueReport = {
   release: { combined: ReleaseInfo; matched: ReleaseInfo };
   generatedAt: string;
@@ -124,6 +173,12 @@ export type CatalogueReport = {
     checked: number;
     mismatched: number;
     pairs: NormaliserPair[];
+  };
+  flapping: {
+    releases: FlappingRelease[];
+    listingsSeen: number;
+    match: { listings: number; groups: MatchFlapGroup[] };
+    presence: { listings: number; groups: PresenceFlapGroup[] };
   };
 };
 
