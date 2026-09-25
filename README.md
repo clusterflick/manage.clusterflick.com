@@ -3,8 +3,8 @@
 An internal review site for the Clusterflick pipeline. It answers four questions
 in one place:
 
-- **Catalogue** — what is in the current data, what failed to match, and what the
-  matches are missing.
+- **Catalogue** — what is in the current data, what failed to match, what the
+  matches are missing, and which listings flap from one run to the next.
 - **LLM usage** — what the transform pipeline spends on the LLM, and where it goes.
 - **Pipeline** — how reliably retrieve, transform, match and the rest actually run.
 - **Venues** — which sources have stopped answering, and why.
@@ -24,7 +24,7 @@ npm run dev
 
 | Step | What it does |
 | --- | --- |
-| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined`, `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs and daily venue health logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
+| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs and daily venue health logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
 | `npm run build-report` | Reduces those into one JSON file per page under `src/generated`. |
 | `npm run build` | Static export into `./out`. |
 
@@ -41,6 +41,7 @@ Useful environment variables for the fetch step:
 | `HEALTH_DAYS` | `14` | How many daily venue-health releases to pull. |
 | `LLM_MONTHS` | `6` | How many monthly LLM usage releases to pull. |
 | `RUN_WINDOW_DAYS` | `30` | How far back to read workflow runs. |
+| `FLAP_RELEASES` | `30` | How many `data-combined` releases to compare when looking for flapping listings — about ten days. |
 
 ## Deployment
 
@@ -56,6 +57,13 @@ the data moves, so without it a merge waited for the next nightly run.
 Job timings for finished runs are kept in `./.cache` between builds (restored by
 `actions/cache` in CI), so an hourly rebuild looks up only the runs it has not
 seen rather than making ~600 jobs calls against the token's rate limit.
+
+Flapping is found by following each venue listing through the recent
+`data-combined` releases. Each release is around 20MB, and all that matters here
+is which film every listing sat under and when its last performance is, so each
+is reduced to that (around 850KB)
+and kept in `./.cache/combined-history` by tag. Releases never change once
+published, so a rebuild downloads only the ones it hasn't seen.
 
 The per-venue LLM breakdown comes from workflow artifacts, which need a token to
 download and expire after a fortnight. Without one, the LLM page says so in

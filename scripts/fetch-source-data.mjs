@@ -14,10 +14,12 @@
 //   HEALTH_DAYS  - how many daily venue-health releases to pull (default 14)
 //   LLM_MONTHS   - how many monthly LLM usage releases to pull (default 6)
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
+//   FLAP_RELEASES - how many data-combined releases to compare for flapping
+//                   (default 30, about ten days)
 //   SKIP_EXISTING - reuse anything already in ./source-data
 
 import { execFile } from "node:child_process";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { WORKFLOWS } from "./lib/workflows.mjs";
@@ -39,6 +41,7 @@ const OUT = path.join(process.cwd(), "source-data");
 const HEALTH_DAYS = Number(process.env.HEALTH_DAYS || 14);
 const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
+const FLAP_RELEASES = Number(process.env.FLAP_RELEASES || 30);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
 
 const unzip = promisify(execFile).bind(null, "unzip");
@@ -90,6 +93,96 @@ async function fetchPipelineOutput() {
       assets: release.assets.map(({ name, size }) => ({ name, size })),
     });
     return `${release.tag_name} (${release.assets.length} providers)`;
+  });
+}
+
+// Earlier data-combined releases, for spotting a listing that flaps between
+// runs - matching one film, then another, then the first again, or dropping out
+// of a release and coming back in the next.
+//
+// Each release is around 20MB and only three things in it matter here: which
+// movie every showing sat under, what that movie was called, and when the
+// showing's last performance is. So each is reduced to that as it arrives -
+// around 850KB - and the reduction is kept in .cache by tag. A release never
+// changes once published, so an hourly rebuild downloads only the releases it
+// has not seen, usually none or one.
+const HISTORY_CACHE = path.join(process.cwd(), ".cache", "combined-history");
+// Bumped whenever snapshotOf keeps something new, so a cached snapshot missing
+// it is rebuilt rather than read as though the field were empty.
+const SNAPSHOT_VERSION = 2;
+
+function snapshotOf(combined) {
+  const showings = {};
+  const movies = {};
+  for (const movie of Object.values(combined.movies)) {
+    // A listing whose last performance has passed drops out of the next
+    // release, and comes back under the same id if the venue adds a date - a
+    // monthly event does exactly this. Keeping the last time is what lets the
+    // report tell that apart from a listing dropped while it still had dates.
+    const lastPerformance = {};
+    for (const performance of movie.performances) {
+      lastPerformance[performance.showingId] = Math.max(
+        lastPerformance[performance.showingId] ?? 0,
+        performance.time,
+      );
+    }
+    // Matched the way the catalogue report counts it: outright, or resolved
+    // into the films of a double bill.
+    const matched = !movie.isUnmatched || (movie.includedMovies?.length ?? 0) > 0;
+    movies[movie.id] = { title: movie.title, matched };
+    for (const showing of Object.values(movie.showings)) {
+      showings[showing.id] = {
+        movieId: movie.id,
+        venueId: showing.venueId,
+        lastPerformance: lastPerformance[showing.id] ?? null,
+      };
+    }
+  }
+  return { version: SNAPSHOT_VERSION, generatedAt: combined.generatedAt, showings, movies };
+}
+
+async function fetchCombinedHistory() {
+  const dir = path.join(OUT, "combined-history");
+  await step("combined history", path.join(dir, "index.json"), async () => {
+    const releases = (await listReleases("clusterflick/data-combined"))
+      .filter((release) => release.assets.some((a) => a.name === "combined-data.json"))
+      .sort((a, b) => a.published_at.localeCompare(b.published_at))
+      .slice(-FLAP_RELEASES);
+    // The newest is usually the one fetchPipelineOutput just downloaded.
+    const latest = await readJson(path.join(OUT, "combined-release.json")).catch(() => null);
+
+    await rm(dir, { recursive: true, force: true });
+    let downloaded = 0;
+    for (const release of releases) {
+      const cached = path.join(HISTORY_CACHE, `${release.tag_name}.json`);
+      const current =
+        (await exists(cached)) && (await readJson(cached)).version === SNAPSHOT_VERSION;
+      if (!current) {
+        let combinedFile = path.join(OUT, "combined-data.json");
+        if (latest?.tag !== release.tag_name) {
+          combinedFile = path.join(OUT, "combined-history.tmp.json");
+          const asset = release.assets.find((a) => a.name === "combined-data.json");
+          await downloadAsset(asset, combinedFile);
+          downloaded += 1;
+        }
+        await writeJson(cached, snapshotOf(await readJson(combinedFile)));
+        if (latest?.tag !== release.tag_name) await rm(combinedFile);
+      }
+      await mkdir(dir, { recursive: true });
+      await copyFile(cached, path.join(dir, `${release.tag_name}.json`));
+    }
+
+    // Releases that have aged out of the window drop out of the cache too.
+    const wanted = new Set(releases.map((release) => `${release.tag_name}.json`));
+    for (const file of await readdir(HISTORY_CACHE).catch(() => [])) {
+      if (!wanted.has(file)) await rm(path.join(HISTORY_CACHE, file));
+    }
+
+    await writeJson(
+      path.join(dir, "index.json"),
+      releases.map((release) => ({ tag: release.tag_name, publishedAt: release.published_at })),
+    );
+    return `${releases.length} releases (${downloaded} downloaded)`;
   });
 }
 
@@ -460,6 +553,7 @@ async function main() {
     `Fetching source data into ./source-data${hasToken ? "" : " (no token — public rate limit)"}`,
   );
   await fetchPipelineOutput();
+  await fetchCombinedHistory();
   await fetchTransformed();
   await fetchNormaliser();
   await fetchLlmUsage();

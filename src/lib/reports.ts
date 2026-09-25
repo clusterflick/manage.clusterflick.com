@@ -69,6 +69,59 @@ export type NormaliserPair = {
   url: string | null;
 };
 
+// A film a flapping listing sat under in one run or another.
+export type FlappingFilm = {
+  id: string;
+  title: string;
+  matched: boolean;
+  // Its page on clusterflick.com, while it is still in the latest release.
+  url: string | null;
+};
+
+// A group of listings flipping between the same films. Each listing's timeline
+// has one entry per release: an index into `films`, or null where it was not
+// listed.
+export type MatchFlapGroup = {
+  key: string;
+  films: FlappingFilm[];
+  kind: "sometimes unmatched" | "between films";
+  venues: { id: string; name: string }[];
+  listings: {
+    id: string;
+    venue: { id: string; name: string };
+    switches: number;
+    lastFlipAt: string | null;
+    timeline: (number | null)[];
+  }[];
+  switches: number;
+  lastFlipAt: string | null;
+};
+
+// A venue whose listings dropped out of a release and came back, while they
+// still had performances to come. Each listing's timeline is "in", "out" for a
+// run missed that way, or null for any other run it was not listed in - before
+// its first, after its last, or a gap it left with nothing left to show.
+export type PresenceFlapGroup = {
+  key: string;
+  venue: { id: string; name: string; url: string | null };
+  listings: {
+    id: string;
+    film: FlappingFilm;
+    timeline: ("in" | "out" | null)[];
+    dropouts: number;
+    missedRuns: number;
+    lastReturnAt: string | null;
+  }[];
+  // Per release: how many of these listings were missing, and how many
+  // listings the venue carried in all.
+  missing: number[];
+  venueListings: number[];
+  dropouts: number;
+  lastReturnAt: string | null;
+};
+
+export type FlappingRelease = { tag: string; publishedAt: string };
+
 export type CatalogueReport = {
   release: { combined: ReleaseInfo; matched: ReleaseInfo };
   generatedAt: string;
@@ -124,6 +177,12 @@ export type CatalogueReport = {
     checked: number;
     mismatched: number;
     pairs: NormaliserPair[];
+  };
+  flapping: {
+    releases: FlappingRelease[];
+    listingsSeen: number;
+    match: { listings: number; groups: MatchFlapGroup[] };
+    presence: { listings: number; groups: PresenceFlapGroup[] };
   };
 };
 

@@ -217,3 +217,91 @@
   font-size: 0.76rem;
   white-space: nowrap;
 }
+
+// Flapping timelines: one cell per data-combined release, oldest first.
+.timeline {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+.cellFilm,
+.cellIn,
+.cellOut,
+.cellAbsent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 18px;
+  border-radius: 2px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: default;
+}
+
+.cellFilm {
+  color: #fff;
+  border: 1.5px solid transparent;
+}
+
+.cellUnmatched {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.cellIn {
+  background: var(--text-muted);
+}
+
+.cellOut {
+  border: 1.5px solid var(--status-critical);
+  color: var(--status-critical-ink);
+}
+
+.cellAbsent {
+  background: var(--surface-sunken);
+}
+
+.films {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 220px;
+  max-width: 380px;
+}
+
+.film {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+.filmKey {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}
+
+.flapListings {
+  margin: 0;
+  padding: 10px 18px 14px;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.flapListing {
+  display: grid;
+  grid-template-columns: minmax(200px, 320px) auto 1fr;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 0.82rem;
+
+  @media (max-width: 700px) {
+    grid-template-columns: 1fr;
+  }
+}

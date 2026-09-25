@@ -9,6 +9,7 @@ import VenueMissTable from "./venue-miss-table";
 import SilentVenues from "./silent-venues";
 import ResolvedTable from "./resolved-table";
 import NormaliserTable from "./normaliser-table";
+import { MatchFlapTable, PresenceFlapTable } from "./flapping-tables";
 import { catalogue } from "@/lib/reports";
 import { rateStatus } from "@/lib/status";
 import { count, dateTimeLabel, percent } from "@/lib/format";
@@ -17,8 +18,18 @@ import styles from "./page.module.scss";
 export const metadata = { title: "Catalogue — Clusterflick manage" };
 
 export default function CataloguePage() {
-  const { totals, matching, fieldCoverage, ratingCoverage, byCategory, normaliser } =
-    catalogue;
+  const {
+    totals,
+    matching,
+    fieldCoverage,
+    ratingCoverage,
+    byCategory,
+    normaliser,
+    flapping,
+  } = catalogue;
+  const flapWindow = flapping.releases.length
+    ? `the last ${count(flapping.releases.length)} data-combined releases, ${dateTimeLabel(flapping.releases[0].publishedAt)} to ${dateTimeLabel(flapping.releases.at(-1)!.publishedAt)}`
+    : "no data-combined releases";
   const posters = fieldCoverage.find((field) => field.key === "posterPath");
 
   return (
@@ -56,6 +67,13 @@ export default function CataloguePage() {
           label="Unmatched non-films"
           value={count(matching.unmatchedNonFilms)}
           detail="Shorts, talks, events, music, quizzes. Expected — there is no film to match."
+        />
+        <StatTile
+          label="Flapping listings"
+          value={count(flapping.match.listings)}
+          detail={`Flipped back to a film they had already left, over the last ${count(flapping.releases.length)} releases. ${count(flapping.presence.listings)} more dropped out and came back.`}
+          severity={flapping.match.listings > 0 ? "warning" : "good"}
+          href="#flapping"
         />
         <StatTile
           label="Poster coverage"
@@ -113,6 +131,51 @@ export default function CataloguePage() {
         flush
       >
         <NormaliserTable pairs={normaliser.pairs} />
+      </Panel>
+
+      <Panel
+        id="flapping"
+        title={`${count(flapping.match.listings)} listings flapping between matches`}
+        note={
+          <>
+            Venue listings that sat under one film, then another, then the
+            first again — across {flapWindow}. Moving once is a rematch and
+            fine; coming back is the matcher unable to decide, and the site
+            showing a different film from one run to the next. Moving in and
+            out of a match counts too, drawn hollow. Grouped by the films
+            involved, since one title usually flaps at every venue listing it
+            at once; the timeline is the listing that switched most, and the
+            rest are under the toggle. Hover a cell for its release.
+          </>
+        }
+        flush
+      >
+        <MatchFlapTable groups={flapping.match.groups} releases={flapping.releases} />
+      </Panel>
+
+      <Panel
+        id="flapping-presence"
+        title={`${count(flapping.presence.listings)} listings dropping out and coming back, at ${count(flapping.presence.groups.length)} venues`}
+        note={
+          <>
+            Venue listings missing from a release between two they were in,
+            while they still had performances to come — across {flapWindow}. A
+            listing whose last performance has passed drops out on its own and
+            comes back under the same id when the venue adds a date, as a
+            monthly event does, so those gaps are left out. Grouped by venue,
+            since a drop-out is usually the venue’s retrieval coming back
+            short: each cell counts how many of its listings went missing in
+            that release, so several films lost in one run stand out from one
+            film lost over several. The films affected are under the toggle,
+            each marked × where it went missing.
+          </>
+        }
+        flush
+      >
+        <PresenceFlapTable
+          groups={flapping.presence.groups}
+          releases={flapping.releases}
+        />
       </Panel>
 
       <Panel

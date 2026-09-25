@@ -17,6 +17,7 @@ import buildLlmReport from "./lib/report-llm.mjs";
 import buildPipelineReport from "./lib/report-pipeline.mjs";
 import buildHealthReport from "./lib/report-health.mjs";
 import buildNormaliserReport from "./lib/report-normaliser.mjs";
+import buildFlappingReport from "./lib/report-flapping.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
@@ -118,6 +119,23 @@ async function main() {
   });
   console.log(
     `· normaliser — ${catalogue.normaliser.mismatched} of ${catalogue.normaliser.checked} matched listings normalise apart from their TMDB title`,
+  );
+
+  const releases = await readJson(source("combined-history", "index.json"));
+  const history = [];
+  for (const release of releases) {
+    history.push({
+      ...release,
+      ...(await readJson(source("combined-history", `${release.tag}.json`))),
+    });
+  }
+  catalogue.flapping = buildFlappingReport({
+    history,
+    venues: combined.venues,
+    latestMovies: combined.movies,
+  });
+  console.log(
+    `· flapping — over ${history.length} releases, ${catalogue.flapping.match.listings} listings flapped between matches and ${catalogue.flapping.presence.listings} in and out`,
   );
 
   const llm = buildLlmReport(
