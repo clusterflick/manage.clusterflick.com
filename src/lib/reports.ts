@@ -287,7 +287,19 @@ export type LlmReport = {
     promptTokens: number;
     venuesWithLlmUsage: number;
     venueCount: number;
+    byProvider: LlmProviderUsage[];
   }[];
+};
+
+// One provider's share of a single transform run. Provider is read from the
+// call-site name, since the log does not record it.
+export type LlmProviderUsage = {
+  provider: "Jev" | "Gemini";
+  calls: number;
+  cacheMisses: number;
+  cacheHitRate: number;
+  estimatedCostUsd: number;
+  callSites: { name: string; calls: number; cacheMisses: number; estimatedCostUsd: number }[];
 };
 
 export type WorkflowRunRef = {

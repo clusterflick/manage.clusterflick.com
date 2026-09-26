@@ -100,3 +100,75 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
+
+// The runs table's expanders, matching the shared DataTable's.
+.toggleCol {
+  width: 36px;
+  padding-right: 0 !important;
+}
+
+.toggle {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+}
+
+// The open row and the detail beneath it read as one block.
+.table tbody tr.openRow td {
+  border-bottom: 0;
+}
+
+.table tbody tr.detailRow {
+  background: var(--surface-2);
+
+  &:hover {
+    background: var(--surface-2);
+  }
+
+  > td {
+    padding: 4px 16px 14px 52px;
+  }
+}
+
+// A run's split by provider, nested under its row. Lighter than the table it
+// sits in, so it reads as detail rather than a second table of runs.
+.providerTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 6px 12px 6px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  th {
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  tbody tr:hover {
+    background: none;
+  }
+}
