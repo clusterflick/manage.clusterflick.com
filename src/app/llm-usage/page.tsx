@@ -51,6 +51,18 @@ export default function LlmUsagePage() {
     ),
   }));
 
+  // When each stage moved over to Jev, marked on the first day it ran there.
+  // A day can be missing from the log (no runs), so a change lands on the
+  // first logged day on or after its date; one at or before the window's first
+  // day has no boundary inside the chart to draw.
+  const callSiteMarkers = [
+    { date: "2026-09-20", label: "Categorisation on Jev" },
+    { date: "2026-09-22", label: "Results matching on Jev" },
+  ].flatMap(({ date, label }) => {
+    const index = llm.days.findIndex((day) => day.date >= date);
+    return index > 0 ? [{ index, label }] : [];
+  });
+
   return (
     <>
       <PageHeader
@@ -138,7 +150,7 @@ export default function LlmUsagePage() {
 
       <Panel
         title="Cost by call site"
-        note="Each day's spend split by the stage that made the call. This is what says whether a rise came from more listings needing the LLM or from one stage losing its cache. The line is the number of transform runs that day: a tall bar with the line up is the same work paid for more often, one with the line flat is more work."
+        note="Each day's spend split by the stage that made the call. This is what says whether a rise came from more listings needing the LLM or from one stage losing its cache. The line is the number of transform runs that day: a tall bar with the line up is the same work paid for more often, one with the line flat is more work. The dashed lines mark each stage moving over to Jev."
       >
         <StackedBars
           series={stacked}
@@ -149,6 +161,7 @@ export default function LlmUsagePage() {
             values: llm.days.map((day) => day.runs),
             format: "count",
           }}
+          markers={callSiteMarkers}
         />
       </Panel>
 

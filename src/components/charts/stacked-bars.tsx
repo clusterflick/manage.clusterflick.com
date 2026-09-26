@@ -22,12 +22,21 @@ export type StackOverlay = {
   format: FormatKey;
 };
 
+// A dated change drawn as a dashed vertical line on the boundary before the bar
+// at `index` - the first day the change applied - so a shift in the bars can
+// be read against what caused it.
+export type StackMarker = {
+  index: number;
+  label: string;
+};
+
 type Props = {
   series: StackSeries[];
   labels: string[];
   height?: number;
   format: FormatKey;
   overlay?: StackOverlay;
+  markers?: StackMarker[];
 };
 
 // A stacked bar per label. Only ever used where the parts genuinely sum to a
@@ -49,6 +58,7 @@ export default function StackedBars({
   height = 240,
   format,
   overlay,
+  markers = [],
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 720;
@@ -82,8 +92,8 @@ export default function StackedBars({
     return { ticks: result, domainMax: top || 1 };
   })();
 
-  const xOf = (index: number) =>
-    padding.left + (index + 0.5) * (innerWidth / Math.max(labels.length, 1));
+  const slotWidth = innerWidth / Math.max(labels.length, 1);
+  const xOf = (index: number) => padding.left + (index + 0.5) * slotWidth;
   const hOf = (value: number) => (value / domainMax) * innerHeight;
   const baseline = padding.top + innerHeight;
   const formatValue = VALUE_FORMAT[format];
@@ -113,6 +123,24 @@ export default function StackedBars({
         .map((value, index) => `${index === 0 ? "M" : "L"}${xOf(index)},${yOf(value)}`)
         .join(" "),
     };
+  })();
+
+  // Each marker's line starts at its own label, capped with a dot, so a label
+  // belongs to the line it touches. Labels are staggered a row apart, and the
+  // rows are handed out so a label only ever runs across lines that start
+  // below it: past the middle labels read leftwards (clear of the right-hand
+  // axis) and the rightmost takes the top row; before it they read rightwards
+  // and the leftmost does.
+  const placedMarkers = (() => {
+    const placed = markers.map((marker) => {
+      const x = padding.left + marker.index * slotWidth;
+      return { marker, x, leftwards: x > padding.left + innerWidth / 2 };
+    });
+    const ordered = [
+      ...placed.filter((entry) => entry.leftwards).sort((a, b) => b.x - a.x),
+      ...placed.filter((entry) => !entry.leftwards).sort((a, b) => a.x - b.x),
+    ];
+    return ordered.map((entry, row) => ({ ...entry, y: padding.top + 4 + row * 14 }));
   })();
 
   return (
@@ -183,6 +211,30 @@ export default function StackedBars({
           );
         })}
 
+        {placedMarkers.map(({ marker, x, y, leftwards }) => (
+          <g key={`marker-${marker.index}-${marker.label}`} pointerEvents="none">
+            <line
+              x1={x}
+              x2={x}
+              y1={y}
+              y2={baseline}
+              stroke="var(--axis)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+            <circle cx={x} cy={y} r={2.5} fill="var(--text-secondary)" />
+            <text
+              x={leftwards ? x - 6 : x + 6}
+              y={y}
+              textAnchor={leftwards ? "end" : "start"}
+              dominantBaseline="middle"
+              className={styles.markerText}
+            >
+              {marker.label}
+            </text>
+          </g>
+        ))}
+
         {overlay && overlayAxis && (
           <g pointerEvents="none">
             {overlayAxis.values.map((value) => (
@@ -241,6 +293,13 @@ export default function StackedBars({
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>
+          {markers
+            .filter((marker) => marker.index === hover)
+            .map((marker) => (
+              <div key={marker.label} className={styles.tooltipNote}>
+                {marker.label}
+              </div>
+            ))}
           {series
             .map((entry) => ({ entry, value: entry.values[hover] ?? 0 }))
             .filter(({ value }) => value > 0)
