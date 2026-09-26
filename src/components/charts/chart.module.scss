@@ -24,6 +24,17 @@
   font-family: var(--font-sans);
 }
 
+// Drawn over the bars, so a halo of the surface keeps it legible across them.
+.markerText {
+  fill: var(--text-secondary);
+  font-size: 10.5px;
+  font-family: var(--font-sans);
+  paint-order: stroke;
+  stroke: var(--surface-1);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 .yLabel {
   position: absolute;
   top: -4px;
@@ -52,6 +63,11 @@
   font-weight: 650;
   margin-bottom: 5px;
   color: var(--text-primary);
+}
+
+.tooltipNote {
+  margin: -2px 0 5px;
+  color: var(--text-secondary);
 }
 
 .tooltipRow {
