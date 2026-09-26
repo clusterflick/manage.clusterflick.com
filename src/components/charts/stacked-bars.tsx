@@ -195,6 +195,9 @@ export default function StackedBars({
 
         {markers.map((marker, position) => {
           const x = padding.left + marker.index * slotWidth;
+          // Past the middle the label reads leftwards from its line, so it
+          // can't run off the plot into the right-hand axis.
+          const leftwards = x > padding.left + innerWidth / 2;
           return (
             <g key={`marker-${marker.index}-${marker.label}`} pointerEvents="none">
               <line
@@ -209,9 +212,9 @@ export default function StackedBars({
               {/* Staggered down a line each, so markers a day or two apart
                   don't print over one another. */}
               <text
-                x={x + 4}
+                x={leftwards ? x - 4 : x + 4}
                 y={padding.top + 8 + position * 13}
-                textAnchor="start"
+                textAnchor={leftwards ? "end" : "start"}
                 className={styles.markerText}
               >
                 {marker.label}
