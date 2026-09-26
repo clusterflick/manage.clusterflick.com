@@ -125,6 +125,24 @@ export default function StackedBars({
     };
   })();
 
+  // Each marker's line starts at its own label, capped with a dot, so a label
+  // belongs to the line it touches. Labels are staggered a row apart, and the
+  // rows are handed out so a label only ever runs across lines that start
+  // below it: past the middle labels read leftwards (clear of the right-hand
+  // axis) and the rightmost takes the top row; before it they read rightwards
+  // and the leftmost does.
+  const placedMarkers = (() => {
+    const placed = markers.map((marker) => {
+      const x = padding.left + marker.index * slotWidth;
+      return { marker, x, leftwards: x > padding.left + innerWidth / 2 };
+    });
+    const ordered = [
+      ...placed.filter((entry) => entry.leftwards).sort((a, b) => b.x - a.x),
+      ...placed.filter((entry) => !entry.leftwards).sort((a, b) => a.x - b.x),
+    ];
+    return ordered.map((entry, row) => ({ ...entry, y: padding.top + 4 + row * 14 }));
+  })();
+
   return (
     <div className={styles.wrap}>
       <svg
@@ -193,35 +211,29 @@ export default function StackedBars({
           );
         })}
 
-        {markers.map((marker, position) => {
-          const x = padding.left + marker.index * slotWidth;
-          // Past the middle the label reads leftwards from its line, so it
-          // can't run off the plot into the right-hand axis.
-          const leftwards = x > padding.left + innerWidth / 2;
-          return (
-            <g key={`marker-${marker.index}-${marker.label}`} pointerEvents="none">
-              <line
-                x1={x}
-                x2={x}
-                y1={padding.top}
-                y2={baseline}
-                stroke="var(--axis)"
-                strokeWidth={1}
-                strokeDasharray="4 4"
-              />
-              {/* Staggered down a line each, so markers a day or two apart
-                  don't print over one another. */}
-              <text
-                x={leftwards ? x - 4 : x + 4}
-                y={padding.top + 8 + position * 13}
-                textAnchor={leftwards ? "end" : "start"}
-                className={styles.markerText}
-              >
-                {marker.label}
-              </text>
-            </g>
-          );
-        })}
+        {placedMarkers.map(({ marker, x, y, leftwards }) => (
+          <g key={`marker-${marker.index}-${marker.label}`} pointerEvents="none">
+            <line
+              x1={x}
+              x2={x}
+              y1={y}
+              y2={baseline}
+              stroke="var(--axis)"
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+            <circle cx={x} cy={y} r={2.5} fill="var(--text-secondary)" />
+            <text
+              x={leftwards ? x - 6 : x + 6}
+              y={y}
+              textAnchor={leftwards ? "end" : "start"}
+              dominantBaseline="middle"
+              className={styles.markerText}
+            >
+              {marker.label}
+            </text>
+          </g>
+        ))}
 
         {overlay && overlayAxis && (
           <g pointerEvents="none">
