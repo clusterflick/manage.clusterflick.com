@@ -4,6 +4,7 @@ import StatTile from "@/components/stat-tile";
 import StatGrid from "@/components/stat-tile/grid";
 import LineChart from "@/components/charts/line-chart";
 import StackedBars from "@/components/charts/stacked-bars";
+import RunsTable from "./runs-table";
 import VenueUsageTable from "./venue-usage-table";
 import { llm } from "@/lib/reports";
 import {
@@ -14,7 +15,6 @@ import {
   money,
   percent,
   signedPercent,
-  timeLabel,
 } from "@/lib/format";
 import styles from "./page.module.scss";
 
@@ -40,7 +40,6 @@ export default function LlmUsagePage() {
   // The runs that make up the most recent day, in the order they ran. The day
   // totals elsewhere on the page are sums of exactly these rows.
   const latestDayRuns = llm.runs.filter((run) => run.date === llm.latest.day.date);
-  const latestDayCost = llm.latest.day.estimatedCostUsd;
 
   const stacked = llm.callSites.map((site) => ({
     key: site.name,
@@ -207,59 +206,14 @@ export default function LlmUsagePage() {
 
       <Panel
         title={`Runs on ${llm.latest.day.date}`}
-        note="One row per transform run on the most recent day in the log, in the order they ran — which is today, on a site built after the day's first run. The first run of a day always starts on a cold cache, so it pays for work the rest of the day gets back for a fraction of the price; a run that follows a retrieve has new listings to read and costs more than one that follows nothing."
+        note="One row per transform run on the most recent day in the log, in the order they ran — which is today, on a site built after the day's first run. The first run of a day always starts on a cold cache, so it pays for work the rest of the day gets back for a fraction of the price; a run that follows a retrieve has new listings to read and costs more than one that follows nothing. Open a run to see its calls and cost split between Jev and Gemini, read from which call sites it hit."
         flush
       >
-        <div className={styles.scroll}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Run</th>
-                <th className={styles.right}>Calls</th>
-                <th className={styles.right}>Cached</th>
-                <th className={styles.right}>Prompt tokens</th>
-                <th className={styles.right}>Cost</th>
-                <th className={styles.right}>Share of day</th>
-                <th className={styles.right}>Venues on LLM</th>
-              </tr>
-            </thead>
-            <tbody>
-              {latestDayRuns.map((run, index) => (
-                <tr key={run.runId}>
-                  <td className={styles.strong}>
-                    {run.at ? timeLabel(run.at) : `Run ${index + 1}`}
-                    {index === 0 && <span className={styles.tag}>cold cache</span>}
-                  </td>
-                  <td className={styles.right}>{count(run.calls)}</td>
-                  <td className={styles.right}>{percent(run.cacheHitRate, 1)}</td>
-                  <td className={styles.right}>{compactCount(run.promptTokens)}</td>
-                  <td className={styles.right}>{money(run.estimatedCostUsd)}</td>
-                  <td className={styles.right}>
-                    {latestDayCost > 0
-                      ? percent(run.estimatedCostUsd / latestDayCost, 0)
-                      : "—"}
-                  </td>
-                  <td className={styles.right}>
-                    {count(run.venuesWithLlmUsage)} of {count(run.venueCount)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td className={styles.strong}>
-                  {latestDayRuns.length} {latestDayRuns.length === 1 ? "run" : "runs"}
-                </td>
-                <td className={styles.right}>{count(llm.latest.day.calls)}</td>
-                <td className={styles.right}>{percent(llm.latest.day.cacheHitRate, 1)}</td>
-                <td className={styles.right}>{compactCount(llm.latest.day.promptTokens)}</td>
-                <td className={styles.right}>{money(latestDayCost)}</td>
-                <td className={styles.right}>100%</td>
-                <td className={styles.right}>—</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <RunsTable
+          runs={latestDayRuns}
+          day={llm.latest.day}
+          slots={Object.fromEntries(callSiteSlots)}
+        />
       </Panel>
 
       <Panel

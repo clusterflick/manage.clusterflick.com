@@ -40,6 +40,41 @@ function dayTotals(rows) {
 // looking at - into the right-hand edge.
 export const WINDOW_DAYS = 30;
 
+// Which model provider serves each call site. The log records call sites, not
+// providers, but the stages that moved to Jev were renamed as they went
+// (ask-llm-to-categorise became ask-jev-to-categorise), so the prefix says
+// where a call went. Everything else is still on Gemini.
+const PROVIDERS = ["Jev", "Gemini"];
+const providerOf = (callSite) => (callSite.startsWith("ask-jev-") ? "Jev" : "Gemini");
+
+// One run's spend split by provider, with the call sites behind each share.
+// Built from the same per-call-site buckets as the run total, so the providers
+// sum to the row. A provider the run made no calls to is left out.
+function runByProvider(row) {
+  const sites = Object.entries(row.byCallSite ?? {})
+    .map(([name, bucket]) => ({
+      name,
+      calls: bucket.calls,
+      cacheMisses: bucket.cacheMisses,
+      estimatedCostUsd: money(bucket.estimatedCostUsd),
+    }))
+    .filter((site) => site.calls > 0);
+  const byProvider = groupBy(sites, (site) => providerOf(site.name));
+  return PROVIDERS.filter((provider) => byProvider.has(provider)).map((provider) => {
+    const group = byProvider.get(provider);
+    const calls = sum(group.map((site) => site.calls));
+    const cacheMisses = sum(group.map((site) => site.cacheMisses));
+    return {
+      provider,
+      calls,
+      cacheMisses,
+      cacheHitRate: round(rate(calls - cacheMisses, calls)),
+      estimatedCostUsd: money(sum(group.map((site) => site.estimatedCostUsd))),
+      callSites: group.sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd),
+    };
+  });
+}
+
 const shiftDate = (date, days) => {
   const shifted = new Date(`${date}T12:00:00Z`);
   shifted.setUTCDate(shifted.getUTCDate() + days);
@@ -255,6 +290,7 @@ export default function buildLlmReport(allRows, venueUsage) {
       promptTokens: row.promptTokens,
       venuesWithLlmUsage: row.venuesWithLlmUsage,
       venueCount: row.venueCount,
+      byProvider: runByProvider(row),
     })),
   };
 }
