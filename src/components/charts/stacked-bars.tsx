@@ -62,7 +62,17 @@ export default function StackedBars({
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 720;
-  const padding = { top: 12, right: overlay ? 40 : 14, bottom: 26, left: 52 };
+  // Marker labels get a band of their own above the plot, a row each, so no
+  // bar or overlay point can reach up and run through them. The band is added
+  // to the chart's height rather than taken out of the plot.
+  const markerBand = markers.length > 0 ? markers.length * 14 + 4 : 0;
+  const svgHeight = height + markerBand;
+  const padding = {
+    top: 12 + markerBand,
+    right: overlay ? 40 : 14,
+    bottom: 26,
+    left: 52,
+  };
 
   const { totals, max, barWidth, innerWidth, innerHeight } = useMemo(() => {
     const sums = labels.map((_, index) =>
@@ -75,9 +85,9 @@ export default function StackedBars({
       max: Math.max(...sums, 0) || 1,
       barWidth: Math.max(slotWidth - 3, 2),
       innerWidth: plotWidth,
-      innerHeight: height - padding.top - padding.bottom,
+      innerHeight: svgHeight - padding.top - padding.bottom,
     };
-  }, [series, labels, height, padding.left, padding.right, padding.top, padding.bottom]);
+  }, [series, labels, svgHeight, padding.left, padding.right, padding.top, padding.bottom]);
 
   // Nice steps rather than quarters of the maximum, so the axis reads $0.20,
   // $0.40 … instead of $0.23, $0.45 …. The domain is raised to the top tick so
@@ -126,11 +136,11 @@ export default function StackedBars({
   })();
 
   // Each marker's line starts at its own label, capped with a dot, so a label
-  // belongs to the line it touches. Labels are staggered a row apart, and the
-  // rows are handed out so a label only ever runs across lines that start
-  // below it: past the middle labels read leftwards (clear of the right-hand
-  // axis) and the rightmost takes the top row; before it they read rightwards
-  // and the leftmost does.
+  // belongs to the line it touches. Labels are staggered a row apart in the
+  // band above the plot, and the rows are handed out so a label only ever runs
+  // across lines that start below it: past the middle labels read leftwards
+  // (clear of the right-hand axis) and the rightmost takes the top row; before
+  // it they read rightwards and the leftmost does.
   const placedMarkers = (() => {
     const placed = markers.map((marker) => {
       const x = padding.left + marker.index * slotWidth;
@@ -140,15 +150,15 @@ export default function StackedBars({
       ...placed.filter((entry) => entry.leftwards).sort((a, b) => b.x - a.x),
       ...placed.filter((entry) => !entry.leftwards).sort((a, b) => a.x - b.x),
     ];
-    return ordered.map((entry, row) => ({ ...entry, y: padding.top + 4 + row * 14 }));
+    return ordered.map((entry, row) => ({ ...entry, y: 8 + row * 14 }));
   })();
 
   return (
     <div className={styles.wrap}>
       <svg
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${width} ${svgHeight}`}
         className={styles.svg}
-        style={{ aspectRatio: `${width} / ${height}` }}
+        style={{ aspectRatio: `${width} / ${svgHeight}` }}
         role="img"
         aria-label={`${series.map((entry) => entry.label).join(", ")} stacked across ${labels.length} days`}
         onPointerLeave={() => setHover(null)}
@@ -276,7 +286,7 @@ export default function StackedBars({
             <text
               key={`label-${index}`}
               x={xOf(index)}
-              y={height - 8}
+              y={svgHeight - 8}
               textAnchor="middle"
               className={styles.axisText}
             >
