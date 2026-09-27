@@ -64,7 +64,8 @@ export type NormaliserPair = {
   kind: "article" | "spacing" | "extra words" | "different title";
   tmdb: { id: number; title: string };
   listings: number;
-  examples: string[];
+  // As the venue wrote it, linking to that venue's listing.
+  examples: { title: string; url: string | null }[];
   venues: { id: string; name: string }[];
   url: string | null;
 };

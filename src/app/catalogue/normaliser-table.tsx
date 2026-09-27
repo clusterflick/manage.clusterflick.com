@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import DataTable, { type Column } from "@/components/data-table";
 import type { NormaliserPair } from "@/lib/reports";
 import { count } from "@/lib/format";
@@ -23,7 +24,20 @@ export default function NormaliserTable({ pairs }: { pairs: NormaliserPair[] }) 
       render: (pair) => (
         <div className={styles.titleCell}>
           <span className="mono">{pair.venueTitle}</span>
-          <div className={styles.categories}>{pair.examples.join(" · ")}</div>
+          <div className={styles.categories}>
+            {pair.examples.map((example, index) => (
+              <Fragment key={example.title}>
+                {index > 0 && " · "}
+                {example.url ? (
+                  <a href={example.url} target="_blank" rel="noreferrer">
+                    {example.title}
+                  </a>
+                ) : (
+                  example.title
+                )}
+              </Fragment>
+            ))}
+          </div>
         </div>
       ),
     },
@@ -79,7 +93,7 @@ export default function NormaliserTable({ pairs }: { pairs: NormaliserPair[] }) 
       columns={columns}
       rowKey={(pair) => pair.key}
       searchText={(pair) =>
-        `${pair.venueTitle} ${pair.tmdbTitle} ${pair.examples.join(" ")} ${pair.kind} ${pair.venues
+        `${pair.venueTitle} ${pair.tmdbTitle} ${pair.examples.map((example) => example.title).join(" ")} ${pair.kind} ${pair.venues
           .map((venue) => venue.name)
           .join(" ")}`
       }
