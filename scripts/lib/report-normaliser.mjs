@@ -76,8 +76,16 @@ export default function buildNormaliserReport({
         tmdb: { id: listing.themoviedb.id, title: listing.themoviedb.title },
         listings: group.length,
         // The titles as the venues wrote them - what a normaliser rule has to
-        // turn into the TMDB side.
-        examples: [...new Set(group.map((entry) => entry.listing.title))].slice(0, 4),
+        // turn into the TMDB side - each with a venue page it came from, to
+        // check the match against.
+        examples: [
+          ...new Map(
+            group.map((entry) => [
+              entry.listing.title,
+              { title: entry.listing.title, url: entry.listing.url ?? null },
+            ]),
+          ).values(),
+        ].slice(0, 4),
         venues: venueIds.map((id) => ({ id, name: venues[id]?.name ?? id })),
         url: movie ? movieUrl(movie) : null,
       };
