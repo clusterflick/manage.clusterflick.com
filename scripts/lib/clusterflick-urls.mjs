@@ -9,6 +9,7 @@ import slugify from "@sindresorhus/slugify";
 
 const SITE = "https://clusterflick.com";
 
-export const movieUrl = (movie) => `${SITE}/movies/${movie.id}/${slugify(movie.title)}`;
+export const movieUrl = (movie) =>
+  `${SITE}/movies/${movie.id}/${slugify(movie.title)}`;
 
 export const venueUrl = (venue) => `${SITE}/venues/${slugify(venue.name)}`;

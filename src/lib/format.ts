@@ -75,7 +75,9 @@ export function timeLabel(value: string | number | null | undefined): string {
   }).format(new Date(value));
 }
 
-export function dateTimeLabel(value: string | number | null | undefined): string {
+export function dateTimeLabel(
+  value: string | number | null | undefined,
+): string {
   if (value === null || value === undefined) return "—";
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: LONDON,
@@ -89,7 +91,10 @@ export function dateTimeLabel(value: string | number | null | undefined): string
 // "3 hours ago", measured from `from`. Pages render it through
 // `@/components/relative-time`, which measures from the viewer's clock once
 // the page has loaded rather than from when the site was built.
-export function relativeTime(value: string | number | null | undefined, from = Date.now()): string {
+export function relativeTime(
+  value: string | number | null | undefined,
+  from = Date.now(),
+): string {
   if (value === null || value === undefined) return "—";
   const deltaMs = from - new Date(value).getTime();
   const minutes = Math.round(deltaMs / 60000);

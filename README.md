@@ -22,11 +22,11 @@ npm run prepare-data   # fetch-source-data + build-report
 npm run dev
 ```
 
-| Step | What it does |
-| --- | --- |
+| Step                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs and daily venue health logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
-| `npm run build-report` | Reduces those into one JSON file per page under `src/generated`. |
-| `npm run build` | Static export into `./out`. |
+| `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                               |
+| `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                    |
 
 Both directories are git-ignored — the reports are derived, and regenerating them
 is a command rather than a commit. `prepare-data` must run before `build`, `dev`
@@ -34,14 +34,14 @@ or `lint`, because the pages import the generated JSON directly.
 
 Useful environment variables for the fetch step:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `PAT` / `GH_TOKEN` / `GITHUB_TOKEN` | — | Raises the API rate limit. Every repo read is public, so this is optional; without one you just run out of budget sooner. |
-| `SKIP_EXISTING` | `false` | Reuse anything already in `./source-data`. What you want while working on the reports themselves. |
-| `HEALTH_DAYS` | `14` | How many daily venue-health releases to pull. |
-| `LLM_MONTHS` | `6` | How many monthly LLM usage releases to pull. |
-| `RUN_WINDOW_DAYS` | `30` | How far back to read workflow runs. |
-| `FLAP_RELEASES` | `30` | How many `data-combined` releases to compare when looking for flapping listings — about ten days. |
+| Variable                            | Default | Purpose                                                                                                                   |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `PAT` / `GH_TOKEN` / `GITHUB_TOKEN` | —       | Raises the API rate limit. Every repo read is public, so this is optional; without one you just run out of budget sooner. |
+| `SKIP_EXISTING`                     | `false` | Reuse anything already in `./source-data`. What you want while working on the reports themselves.                         |
+| `HEALTH_DAYS`                       | `14`    | How many daily venue-health releases to pull.                                                                             |
+| `LLM_MONTHS`                        | `6`     | How many monthly LLM usage releases to pull.                                                                              |
+| `RUN_WINDOW_DAYS`                   | `30`    | How far back to read workflow runs.                                                                                       |
+| `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
 
 ## Deployment
 
@@ -74,7 +74,7 @@ place of the table.
 Three numbers on this site would say the wrong thing if taken at face value, and
 the pages that carry them say so too:
 
-- **Match rate** counts *film listings only*, and treats a listing that resolved
+- **Match rate** counts _film listings only_, and treats a listing that resolved
   into its parts as a match. 454 of 1,840 entries carry `isUnmatched`, but most
   are shorts programmes, Q&As, quiz nights and gigs — listings with no film to
   match to. And `isUnmatched` is not the same as unmatched: a double bill has no
@@ -95,7 +95,7 @@ the pages that carry them say so too:
   was involved. It is left blank there rather than computed.
 - **Venues with no listings** is split by `programming`. Of 414 venues, 268 are
   occasional hosts — community centres, pubs, parks — which are empty almost all
-  of the time by their nature. Only a silent *cinema* means something is wrong.
+  of the time by their nature. Only a silent _cinema_ means something is wrong.
 
 The run history is also read a particular way, because the obvious way returns
 wrong answers. GitHub's workflow-runs endpoint answers a `status`-filtered query

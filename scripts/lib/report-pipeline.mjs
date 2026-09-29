@@ -88,7 +88,9 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
     const firstAttemptSuccesses = succeeded.filter((run) => run.attempt === 1);
 
     const failures = runs
-      .filter((run) => run.conclusion !== "success" && run.conclusion !== "skipped")
+      .filter(
+        (run) => run.conclusion !== "success" && run.conclusion !== "skipped",
+      )
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 
     // Runs needing a person: either they ended badly, or they only succeeded on
@@ -108,9 +110,11 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
         return {
           date,
           runs: dayRuns.length,
-          succeeded: dayRuns.filter((run) => run.conclusion === "success").length,
+          succeeded: dayRuns.filter((run) => run.conclusion === "success")
+            .length,
           failed: dayRuns.filter(
-            (run) => run.conclusion !== "success" && run.conclusion !== "skipped",
+            (run) =>
+              run.conclusion !== "success" && run.conclusion !== "skipped",
           ).length,
           medianDurationMs: dayExecutions.length
             ? Math.round(percentile(dayExecutions, 0.5))
@@ -136,8 +140,13 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
       superseded,
       runs: runs.length,
       succeeded: succeeded.length,
-      successRate: nothingCollected ? null : round(rate(succeeded.length, runs.length)),
-      unassisted: target.unassisted && !nothingCollected ? firstAttemptSuccesses.length : null,
+      successRate: nothingCollected
+        ? null
+        : round(rate(succeeded.length, runs.length)),
+      unassisted:
+        target.unassisted && !nothingCollected
+          ? firstAttemptSuccesses.length
+          : null,
       unassistedRate:
         target.unassisted && !nothingCollected
           ? round(rate(firstAttemptSuccesses.length, runs.length))

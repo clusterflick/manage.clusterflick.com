@@ -40,7 +40,11 @@ export default function CoverageTable({ fields }: { fields: FieldCoverage[] }) {
                   <td className={styles.fieldName}>{field.label}</td>
                   <td className={styles.right}>{count(field.present)}</td>
                   <td className={styles.right}>
-                    {missing === 0 ? <span className={styles.muted}>—</span> : count(missing)}
+                    {missing === 0 ? (
+                      <span className={styles.muted}>—</span>
+                    ) : (
+                      count(missing)
+                    )}
                   </td>
                   <td className={styles.right}>
                     <StatusPill severity={rateStatus(field.coverage)}>
@@ -80,7 +84,8 @@ export default function CoverageTable({ fields }: { fields: FieldCoverage[] }) {
             return (
               <>
                 <p className={styles.expansionNote}>
-                  Matched movies with no <strong>{field.label.toLowerCase()}</strong>
+                  Matched movies with no{" "}
+                  <strong>{field.label.toLowerCase()}</strong>
                   {missing > field.examples.length
                     ? ` — the ${field.examples.length} with the most performances, of ${count(missing)}.`
                     : "."}

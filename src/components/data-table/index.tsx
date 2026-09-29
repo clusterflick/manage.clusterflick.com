@@ -123,7 +123,9 @@ export default function DataTable<Row>({
                 <th
                   key={column.key}
                   style={{ width: column.width }}
-                  className={column.align === "right" ? styles.right : undefined}
+                  className={
+                    column.align === "right" ? styles.right : undefined
+                  }
                   aria-sort={
                     sort?.key === column.key
                       ? sort.direction === "asc"
@@ -170,7 +172,9 @@ export default function DataTable<Row>({
                             className={styles.toggle}
                             onClick={() => toggleRow(key)}
                             aria-expanded={isOpen}
-                            aria-label={isOpen ? "Hide details" : "Show details"}
+                            aria-label={
+                              isOpen ? "Hide details" : "Show details"
+                            }
                           >
                             <span aria-hidden="true">{isOpen ? "▾" : "▸"}</span>
                           </button>
@@ -180,7 +184,9 @@ export default function DataTable<Row>({
                     {columns.map((column) => (
                       <td
                         key={column.key}
-                        className={column.align === "right" ? styles.right : undefined}
+                        className={
+                          column.align === "right" ? styles.right : undefined
+                        }
                       >
                         {column.render(row)}
                       </td>

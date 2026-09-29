@@ -87,7 +87,15 @@ export default function StackedBars({
       innerWidth: plotWidth,
       innerHeight: svgHeight - padding.top - padding.bottom,
     };
-  }, [series, labels, svgHeight, padding.left, padding.right, padding.top, padding.bottom]);
+  }, [
+    series,
+    labels,
+    svgHeight,
+    padding.left,
+    padding.right,
+    padding.top,
+    padding.bottom,
+  ]);
 
   // Nice steps rather than quarters of the maximum, so the axis reads $0.20,
   // $0.40 … instead of $0.23, $0.45 …. The domain is raised to the top tick so
@@ -130,7 +138,10 @@ export default function StackedBars({
       values,
       label: tickFormatter(overlay.format, values),
       path: overlay.values
-        .map((value, index) => `${index === 0 ? "M" : "L"}${xOf(index)},${yOf(value)}`)
+        .map(
+          (value, index) =>
+            `${index === 0 ? "M" : "L"}${xOf(index)},${yOf(value)}`,
+        )
         .join(" "),
     };
   })();
@@ -222,7 +233,10 @@ export default function StackedBars({
         })}
 
         {placedMarkers.map(({ marker, x, y, leftwards }) => (
-          <g key={`marker-${marker.index}-${marker.label}`} pointerEvents="none">
+          <g
+            key={`marker-${marker.index}-${marker.label}`}
+            pointerEvents="none"
+          >
             <line
               x1={x}
               x2={x}
@@ -328,7 +342,11 @@ export default function StackedBars({
               </div>
             ))}
           <div className={styles.tooltipRow}>
-            <span className={styles.swatch} style={{ opacity: 0 }} aria-hidden="true" />
+            <span
+              className={styles.swatch}
+              style={{ opacity: 0 }}
+              aria-hidden="true"
+            />
             <span className={styles.tooltipLabel}>Total</span>
             <span className={`${styles.tooltipValue} numeric`}>
               {formatValue(totals[hover])}
@@ -338,7 +356,10 @@ export default function StackedBars({
             <div className={styles.tooltipRow}>
               <span
                 className={styles.swatch}
-                style={{ background: "var(--text-primary)", borderRadius: "50%" }}
+                style={{
+                  background: "var(--text-primary)",
+                  borderRadius: "50%",
+                }}
                 aria-hidden="true"
               />
               <span className={styles.tooltipLabel}>{overlay.label}</span>

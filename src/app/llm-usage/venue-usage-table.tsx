@@ -18,7 +18,9 @@ export default function VenueUsageTable({
       key: "venue",
       header: "Venue",
       sortValue: (venue) => venue.venueId,
-      render: (venue) => <span className={`${styles.strong} mono`}>{venue.venueId}</span>,
+      render: (venue) => (
+        <span className={`${styles.strong} mono`}>{venue.venueId}</span>
+      ),
     },
     {
       key: "callSites",
@@ -35,7 +37,8 @@ export default function VenueUsageTable({
               <span className="mono">{site.name}</span>
               <span className={styles.chipCount}>
                 {count(site.calls)}
-                {site.cacheMisses > 0 && ` · ${count(site.cacheMisses)} uncached`}
+                {site.cacheMisses > 0 &&
+                  ` · ${count(site.cacheMisses)} uncached`}
               </span>
             </span>
           ))}

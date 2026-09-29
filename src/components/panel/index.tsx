@@ -13,7 +13,14 @@ type Props = {
   flush?: boolean;
 };
 
-export default function Panel({ title, note, actions, id, children, flush }: Props) {
+export default function Panel({
+  title,
+  note,
+  actions,
+  id,
+  children,
+  flush,
+}: Props) {
   return (
     <section className={styles.panel} id={id}>
       {(title || actions) && (

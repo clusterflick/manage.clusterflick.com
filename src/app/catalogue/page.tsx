@@ -38,7 +38,8 @@ export default function CataloguePage() {
         title="Catalogue"
         meta={
           <>
-            data-combined <span className="mono">{catalogue.release.combined.tag}</span>,
+            data-combined{" "}
+            <span className="mono">{catalogue.release.combined.tag}</span>,
             generated {dateTimeLabel(catalogue.generatedAt)} · data-matched{" "}
             <span className="mono">{catalogue.release.matched.tag}</span>
           </>
@@ -104,9 +105,9 @@ export default function CataloguePage() {
             resolve to, so the wrapper entry carries{" "}
             <span className="mono">isUnmatched</span> while the match sits in{" "}
             <span className="mono">includedMovies</span> — a list of fully
-            resolved films, each with its own TMDB id, poster and metadata. These
-            are matches, and the rate above counts them as such. A part shown
-            underlined has no poster of its own.
+            resolved films, each with its own TMDB id, poster and metadata.
+            These are matches, and the rate above counts them as such. A part
+            shown underlined has no poster of its own.
           </>
         }
         flush
@@ -125,7 +126,10 @@ export default function CataloguePage() {
             {count(normaliser.checked)} matched listings in data-transformed{" "}
             <span className="mono">{normaliser.source.transformed.tag}</span>,
             normalised with scripts{" "}
-            <span className="mono">{normaliser.source.scripts.sha.slice(0, 7)}</span>.
+            <span className="mono">
+              {normaliser.source.scripts.sha.slice(0, 7)}
+            </span>
+            .
           </>
         }
         flush
@@ -138,22 +142,24 @@ export default function CataloguePage() {
         title={`${count(flapping.match.listings)} listings flapping between matches`}
         note={
           <>
-            Venue listings that sat under one film, then another, then the
-            first again — across {flapWindow}. Moving once is a rematch and
-            fine; coming back is the matcher unable to decide, and the site
-            showing a different film from one run to the next. Moving in and
-            out of a match counts too, drawn hollow. Grouped by the films
-            involved, since one title usually flaps at every venue listing it
-            at once; the timeline is the listing that switched most, and the
-            rest are under the toggle. Only listings still in the latest
-            release with performances to come are counted — one that has
-            finished is not flipping on the site any more. Hover a cell for
-            its release.
+            Venue listings that sat under one film, then another, then the first
+            again — across {flapWindow}. Moving once is a rematch and fine;
+            coming back is the matcher unable to decide, and the site showing a
+            different film from one run to the next. Moving in and out of a
+            match counts too, drawn hollow. Grouped by the films involved, since
+            one title usually flaps at every venue listing it at once; the
+            timeline is the listing that switched most, and the rest are under
+            the toggle. Only listings still in the latest release with
+            performances to come are counted — one that has finished is not
+            flipping on the site any more. Hover a cell for its release.
           </>
         }
         flush
       >
-        <MatchFlapTable groups={flapping.match.groups} releases={flapping.releases} />
+        <MatchFlapTable
+          groups={flapping.match.groups}
+          releases={flapping.releases}
+        />
       </Panel>
 
       <Panel
@@ -166,14 +172,13 @@ export default function CataloguePage() {
             listing whose last performance has passed drops out on its own and
             comes back under the same id when the venue adds a date, as a
             monthly event does, so those gaps are left out. Grouped by venue,
-            since a drop-out is usually the venue’s retrieval coming back
-            short: each cell counts how many of its listings went missing in
-            that release, so several films lost in one run stand out from one
-            film lost over several. The films affected are under the toggle,
-            each marked × where it went missing. Listings that have since
-            finished are kept, since the venue’s retrieval is no more fixed for
-            the film ending, but marked ended and left out of the still-live
-            count.
+            since a drop-out is usually the venue’s retrieval coming back short:
+            each cell counts how many of its listings went missing in that
+            release, so several films lost in one run stand out from one film
+            lost over several. The films affected are under the toggle, each
+            marked × where it went missing. Listings that have since finished
+            are kept, since the venue’s retrieval is no more fixed for the film
+            ending, but marked ended and left out of the still-live count.
           </>
         }
         flush
@@ -217,7 +222,9 @@ export default function CataloguePage() {
                   <td className={styles.right}>
                     {count(provider.present)} / {count(provider.total)}
                   </td>
-                  <td className={styles.right}>{percent(provider.coverage, 1)}</td>
+                  <td className={styles.right}>
+                    {percent(provider.coverage, 1)}
+                  </td>
                   <td className={styles.meterCol}>
                     <Meter
                       value={provider.coverage}

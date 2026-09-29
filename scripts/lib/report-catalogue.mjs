@@ -72,7 +72,9 @@ const isEmpty = (value) =>
 // A movie's categories come from its showings, which can disagree - the same
 // title booked as a plain screening at one venue and a Q&A at another.
 function categoriesOf(movie) {
-  return new Set(Object.values(movie.showings).map((showing) => showing.category));
+  return new Set(
+    Object.values(movie.showings).map((showing) => showing.category),
+  );
 }
 
 const isFilmListing = (movie) =>
@@ -139,7 +141,9 @@ export default function buildCatalogueReport(combined, matched, releaseInfo) {
       label,
       present: matchedMovies.length - missing.length,
       total: matchedMovies.length,
-      coverage: round(rate(matchedMovies.length - missing.length, matchedMovies.length)),
+      coverage: round(
+        rate(matchedMovies.length - missing.length, matchedMovies.length),
+      ),
       // Capped: the list is for working through, and a page that renders two
       // thousand rows is one nobody scrolls. The count above is the real figure.
       examples: missing
@@ -240,11 +244,15 @@ export default function buildCatalogueReport(combined, matched, releaseInfo) {
   );
   const upcomingPerformances = movies.reduce(
     (total, movie) =>
-      total + movie.performances.filter((performance) => performance.time >= now).length,
+      total +
+      movie.performances.filter((performance) => performance.time >= now)
+        .length,
     0,
   );
 
-  const byCategory = [...groupBy(movies, (movie) => [...categoriesOf(movie)].sort().join(", "))]
+  const byCategory = [
+    ...groupBy(movies, (movie) => [...categoriesOf(movie)].sort().join(", ")),
+  ]
     .map(([categories, group]) => ({
       categories,
       total: group.length,
@@ -273,7 +281,9 @@ export default function buildCatalogueReport(combined, matched, releaseInfo) {
       resolvedNonFilms: resolvedNonFilms.length,
       // The headline: of the listings that should have matched, how many did -
       // counting a double bill that resolved into its parts as a match.
-      filmMatchRate: round(rate(films.length - unmatchedFilms.length, films.length)),
+      filmMatchRate: round(
+        rate(films.length - unmatchedFilms.length, films.length),
+      ),
     },
     // The multi-film and shorts programmes that resolved into their parts, so
     // the number above can be checked rather than taken on trust.

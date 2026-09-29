@@ -22,10 +22,14 @@ export default function OverviewPage() {
   const { catalogue, llm, pipeline, health } = overview;
   const builtAt = new Date(overview.fetchedAt);
 
-  const unassisted = pipeline.workflows.filter((workflow) => workflow.reportsUnassisted);
+  const unassisted = pipeline.workflows.filter(
+    (workflow) => workflow.reportsUnassisted,
+  );
   const worstUnassisted = unassisted.reduce(
     (worst, workflow) =>
-      (workflow.unassistedRate ?? 1) < (worst.unassistedRate ?? 1) ? workflow : worst,
+      (workflow.unassistedRate ?? 1) < (worst.unassistedRate ?? 1)
+        ? workflow
+        : worst,
     unassisted[0],
   );
 
@@ -36,8 +40,12 @@ export default function OverviewPage() {
         meta={
           <>
             Built {dateTimeLabel(builtAt.toISOString())} from data-combined{" "}
-            <span className="mono">{overview.release.combined.tag}</span>, generated{" "}
-            <RelativeTime value={overview.dataGeneratedAt} builtAt={builtAt.getTime()} />
+            <span className="mono">{overview.release.combined.tag}</span>,
+            generated{" "}
+            <RelativeTime
+              value={overview.dataGeneratedAt}
+              builtAt={builtAt.getTime()}
+            />
           </>
         }
       />
@@ -94,7 +102,9 @@ export default function OverviewPage() {
                   : "Runs after the day's first, which is always cold. A cold cache is what makes a day expensive."
               }
               severity={
-                llm.latestCacheHitRate === null ? undefined : cacheStatus(llm.latestCacheHitRate)
+                llm.latestCacheHitRate === null
+                  ? undefined
+                  : cacheStatus(llm.latestCacheHitRate)
               }
               href="/llm-usage"
             />
@@ -142,7 +152,10 @@ export default function OverviewPage() {
               {pipeline.workflows.map((workflow) => (
                 <tr key={workflow.key}>
                   <td>
-                    <Link href={`/pipeline#${workflow.key}`} className={styles.flowName}>
+                    <Link
+                      href={`/pipeline#${workflow.key}`}
+                      className={styles.flowName}
+                    >
                       {workflow.name}
                     </Link>
                   </td>
@@ -153,8 +166,11 @@ export default function OverviewPage() {
                     </StatusPill>
                   </td>
                   <td className={styles.right}>
-                    {workflow.reportsUnassisted && workflow.unassistedRate !== null ? (
-                      <StatusPill severity={rateStatus(workflow.unassistedRate)}>
+                    {workflow.reportsUnassisted &&
+                    workflow.unassistedRate !== null ? (
+                      <StatusPill
+                        severity={rateStatus(workflow.unassistedRate)}
+                      >
                         {percent(workflow.unassistedRate)}
                       </StatusPill>
                     ) : (
@@ -166,10 +182,16 @@ export default function OverviewPage() {
                       </span>
                     )}
                   </td>
-                  <td className={styles.right}>{duration(workflow.medianDurationMs)}</td>
+                  <td className={styles.right}>
+                    {duration(workflow.medianDurationMs)}
+                  </td>
                   <td className={styles.lastRun}>
                     {workflow.lastRun ? (
-                      <a href={workflow.lastRun.url} target="_blank" rel="noreferrer">
+                      <a
+                        href={workflow.lastRun.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         <RelativeTime
                           value={workflow.lastRun.startedAt}
                           builtAt={builtAt.getTime()}

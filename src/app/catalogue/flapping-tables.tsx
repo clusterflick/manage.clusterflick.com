@@ -8,7 +8,12 @@ import type {
   PresenceFlapGroup,
 } from "@/lib/reports";
 import { count, dateTimeLabel } from "@/lib/format";
-import { MatchTimeline, PresenceTimeline, VenueTimeline, filmLetter } from "./flap-timeline";
+import {
+  MatchTimeline,
+  PresenceTimeline,
+  VenueTimeline,
+  filmLetter,
+} from "./flap-timeline";
 import styles from "./page.module.scss";
 
 const venueNames = (venues: { name: string }[]) =>
@@ -24,11 +29,19 @@ function FilmTitle({ film }: { film: FlappingFilm }) {
   );
 }
 
-function VenuesCell({ venues, listings }: { venues: { name: string }[]; listings: number }) {
+function VenuesCell({
+  venues,
+  listings,
+}: {
+  venues: { name: string }[];
+  listings: number;
+}) {
   return (
     <div>
       <span className={styles.venues}>{venueNames(venues)}</span>
-      {listings > 1 && <div className={styles.categories}>{count(listings)} listings</div>}
+      {listings > 1 && (
+        <div className={styles.categories}>{count(listings)} listings</div>
+      )}
     </div>
   );
 }
@@ -53,7 +66,9 @@ export function MatchFlapTable({
               <span className={styles.filmKey}>{filmLetter(index)}</span>
               <span>
                 <FilmTitle film={film} />
-                {!film.matched && <span className={styles.year}>unmatched</span>}
+                {!film.matched && (
+                  <span className={styles.year}>unmatched</span>
+                )}
               </span>
             </span>
           ))}
@@ -124,14 +139,19 @@ export function MatchFlapTable({
               <li key={listing.id} className={styles.flapListing}>
                 <span>
                   {listing.venue.name}
-                  <span className={`${styles.categories} mono`}> {listing.id}</span>
+                  <span className={`${styles.categories} mono`}>
+                    {" "}
+                    {listing.id}
+                  </span>
                 </span>
                 <MatchTimeline
                   timeline={listing.timeline}
                   films={group.films}
                   releases={releases}
                 />
-                <span className={styles.muted}>{count(listing.switches)} switches</span>
+                <span className={styles.muted}>
+                  {count(listing.switches)} switches
+                </span>
               </li>
             ))}
           </ul>
@@ -186,10 +206,14 @@ export function PresenceFlapTable({
       render: (group) => (
         <div>
           <span className={styles.venues}>
-            {[...new Set(group.listings.map((listing) => listing.film.title))].join(", ")}
+            {[
+              ...new Set(group.listings.map((listing) => listing.film.title)),
+            ].join(", ")}
           </span>
           {group.listings.length > 1 && (
-            <div className={styles.categories}>{count(group.listings.length)} listings</div>
+            <div className={styles.categories}>
+              {count(group.listings.length)} listings
+            </div>
           )}
         </div>
       ),
@@ -239,11 +263,19 @@ export function PresenceFlapTable({
             <li key={listing.id} className={styles.flapListing}>
               <span>
                 <FilmTitle film={listing.film} />
-                {!listing.film.matched && <span className={styles.year}>unmatched</span>}
-                <span className={`${styles.categories} mono`}> {listing.id}</span>
+                {!listing.film.matched && (
+                  <span className={styles.year}>unmatched</span>
+                )}
+                <span className={`${styles.categories} mono`}>
+                  {" "}
+                  {listing.id}
+                </span>
                 {!listing.live && <span className={styles.year}>ended</span>}
               </span>
-              <PresenceTimeline timeline={listing.timeline} releases={releases} />
+              <PresenceTimeline
+                timeline={listing.timeline}
+                releases={releases}
+              />
               <span className={styles.muted}>
                 missing from {count(listing.missedRuns)}{" "}
                 {listing.missedRuns === 1 ? "release" : "releases"}

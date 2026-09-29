@@ -32,7 +32,8 @@ const GROUPS: {
   {
     key: "unknown",
     label: "Unclassified",
-    meaning: "No programming type recorded, so there is nothing to read this against.",
+    meaning:
+      "No programming type recorded, so there is nothing to read this against.",
     open: true,
   },
   {
@@ -109,7 +110,9 @@ export default function SilentVenues({ silent }: { silent: Silent }) {
               </span>
               <span className={styles.silentLabel}>
                 {group.label}
-                <span className={styles.silentCount}>{count(venues.length)}</span>
+                <span className={styles.silentCount}>
+                  {count(venues.length)}
+                </span>
               </span>
               <span className={styles.silentMeaning}>{group.meaning}</span>
             </button>

@@ -17,7 +17,10 @@ export type Scale = {
 // A y-axis that always includes zero, so the eye reads bar and area heights as
 // proportional to the value. Truncating the axis is the fastest way to make a
 // 3% change look like a collapse.
-export function niceDomain(values: number[], { includeZero = true } = {}): [number, number] {
+export function niceDomain(
+  values: number[],
+  { includeZero = true } = {},
+): [number, number] {
   const finite = values.filter((value) => Number.isFinite(value));
   if (!finite.length) return [0, 1];
   let min = Math.min(...finite);
@@ -52,7 +55,11 @@ export function niceStep(rough: number): number {
 export function ticksFor([min, max]: [number, number], count = 4): number[] {
   const step = niceStep((max - min) / count);
   const ticks: number[] = [];
-  for (let value = Math.ceil(min / step) * step; value <= max + step * 0.001; value += step) {
+  for (
+    let value = Math.ceil(min / step) * step;
+    value <= max + step * 0.001;
+    value += step
+  ) {
     // Floating point leaves 0.30000000000000004 on some steps; the label
     // formatter would print it verbatim.
     ticks.push(Math.round(value / step) * step);
@@ -85,7 +92,8 @@ export function makeScale(
       pointCount === 1
         ? padding.left + inner.width / 2
         : padding.left + (index / denominator) * inner.width,
-    y: (value) => padding.top + inner.height - ((value - minY) / spanY) * inner.height,
+    y: (value) =>
+      padding.top + inner.height - ((value - minY) / spanY) * inner.height,
   };
 }
 
@@ -109,7 +117,11 @@ export function linePath(points: Point[], scale: Scale): string {
 
 // Area fills only the runs that have data, closing each run to the baseline
 // separately so a gap stays a gap.
-export function areaPath(points: Point[], scale: Scale, baseline: number): string {
+export function areaPath(
+  points: Point[],
+  scale: Scale,
+  baseline: number,
+): string {
   const baseY = scale.y(baseline);
   let path = "";
   let run: number[] = [];

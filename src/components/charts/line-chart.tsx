@@ -71,24 +71,32 @@ export default function LineChart({
   const width = 720;
 
   const { scale, paths, ticks } = useMemo(() => {
-    const all = series.flatMap((entry) => entry.values).filter((value): value is number => value !== null);
+    const all = series
+      .flatMap((entry) => entry.values)
+      .filter((value): value is number => value !== null);
     const domain = niceDomain(reference ? [...all, reference.value] : all);
     const built = makeScale(width, height, labels.length, domain);
     return {
       scale: built,
       ticks: ticksFor(domain),
       paths: series.map((entry) => {
-        const points: Point[] = entry.values.map((value, index) => ({ x: index, y: value }));
+        const points: Point[] = entry.values.map((value, index) => ({
+          x: index,
+          y: value,
+        }));
         return {
           ...entry,
           line: linePath(points, built),
-          area: entry.area ? areaPath(points, built, Math.max(domain[0], 0)) : null,
+          area: entry.area
+            ? areaPath(points, built, Math.max(domain[0], 0))
+            : null,
         };
       }),
     };
   }, [series, labels.length, height, reference]);
 
-  const slotVar = (entry: { slot?: number }) => `var(--series-${entry.slot ?? 1})`;
+  const slotVar = (entry: { slot?: number }) =>
+    `var(--series-${entry.slot ?? 1})`;
 
   // Pointer position maps to the nearest index rather than the nearest mark,
   // so the whole column is a hit target instead of the 8px dot.
@@ -124,12 +132,7 @@ export default function LineChart({
       >
         <defs>
           <clipPath id={clipId}>
-            <rect
-              x={46}
-              y={0}
-              width={width - 46 - 14}
-              height={height - 26}
-            />
+            <rect x={46} y={0} width={width - 46 - 14} height={height - 26} />
           </clipPath>
         </defs>
 
@@ -263,7 +266,9 @@ export default function LineChart({
                 />
                 <span className={styles.tooltipLabel}>{entry.label}</span>
                 <span className={`${styles.tooltipValue} numeric`}>
-                  {value === null || value === undefined ? "no data" : formatValue(value)}
+                  {value === null || value === undefined
+                    ? "no data"
+                    : formatValue(value)}
                 </span>
               </div>
             );

@@ -10,7 +10,15 @@
 // the series shows exactly that, with 15% cached at the start of a month and
 // 90%+ once it settles.
 
-import { groupBy, mean, percentile, rate, round, sum, trend } from "./stats.mjs";
+import {
+  groupBy,
+  mean,
+  percentile,
+  rate,
+  round,
+  sum,
+  trend,
+} from "./stats.mjs";
 
 // The report stores cost at six places so per-call-site figures still sum to
 // the run total; four is what anything user-facing should print.
@@ -45,7 +53,8 @@ export const WINDOW_DAYS = 30;
 // (ask-llm-to-categorise became ask-jev-to-categorise), so the prefix says
 // where a call went. Everything else is still on Gemini.
 const PROVIDERS = ["Jev", "Gemini"];
-const providerOf = (callSite) => (callSite.startsWith("ask-jev-") ? "Jev" : "Gemini");
+const providerOf = (callSite) =>
+  callSite.startsWith("ask-jev-") ? "Jev" : "Gemini";
 
 // One run's spend split by provider, with the call sites behind each share.
 // Built from the same per-call-site buckets as the run total, so the providers
@@ -60,19 +69,25 @@ function runByProvider(row) {
     }))
     .filter((site) => site.calls > 0);
   const byProvider = groupBy(sites, (site) => providerOf(site.name));
-  return PROVIDERS.filter((provider) => byProvider.has(provider)).map((provider) => {
-    const group = byProvider.get(provider);
-    const calls = sum(group.map((site) => site.calls));
-    const cacheMisses = sum(group.map((site) => site.cacheMisses));
-    return {
-      provider,
-      calls,
-      cacheMisses,
-      cacheHitRate: round(rate(calls - cacheMisses, calls)),
-      estimatedCostUsd: money(sum(group.map((site) => site.estimatedCostUsd))),
-      callSites: group.sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd),
-    };
-  });
+  return PROVIDERS.filter((provider) => byProvider.has(provider)).map(
+    (provider) => {
+      const group = byProvider.get(provider);
+      const calls = sum(group.map((site) => site.calls));
+      const cacheMisses = sum(group.map((site) => site.cacheMisses));
+      return {
+        provider,
+        calls,
+        cacheMisses,
+        cacheHitRate: round(rate(calls - cacheMisses, calls)),
+        estimatedCostUsd: money(
+          sum(group.map((site) => site.estimatedCostUsd)),
+        ),
+        callSites: group.sort(
+          (a, b) => b.estimatedCostUsd - a.estimatedCostUsd,
+        ),
+      };
+    },
+  );
 }
 
 const shiftDate = (date, days) => {
@@ -86,7 +101,11 @@ const shiftDate = (date, days) => {
 // it. Most expensive first, then busiest, so the venues worth trimming lead.
 function buildVenueUsage(venueUsage) {
   if (!venueUsage?.available) {
-    return { available: false, reason: venueUsage?.reason ?? "missing", venues: [] };
+    return {
+      available: false,
+      reason: venueUsage?.reason ?? "missing",
+      venues: [],
+    };
   }
   const venues = Object.entries(venueUsage.byVenue)
     .map(([venueId, bucket]) => {
@@ -108,7 +127,9 @@ function buildVenueUsage(venueUsage) {
         callSites,
       };
     })
-    .sort((a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.calls - a.calls);
+    .sort(
+      (a, b) => b.estimatedCostUsd - a.estimatedCostUsd || b.calls - a.calls,
+    );
   return {
     available: true,
     runId: venueUsage.runId,
@@ -140,7 +161,10 @@ export default function buildLlmReport(allRows, venueUsage) {
     const warm = dayRows.slice(1);
     if (!warm.length) return null;
     return round(
-      rate(sum(warm.map((row) => row.cacheHits)), sum(warm.map((row) => row.calls))),
+      rate(
+        sum(warm.map((row) => row.cacheHits)),
+        sum(warm.map((row) => row.calls)),
+      ),
     );
   };
 
@@ -210,11 +234,15 @@ export default function buildLlmReport(allRows, venueUsage) {
   // per run is logged, so this is a tally of "worst offender" appearances
   // rather than a ranking of every venue - said plainly on the page.
   const largest = rows.filter((row) => row.largestPrompt);
-  const largestPrompts = [...groupBy(largest, (row) => row.largestPrompt.venueId)]
+  const largestPrompts = [
+    ...groupBy(largest, (row) => row.largestPrompt.venueId),
+  ]
     .map(([venueId, entries]) => ({
       venueId,
       appearances: entries.length,
-      maxPromptChars: Math.max(...entries.map((row) => row.largestPrompt.promptChars)),
+      maxPromptChars: Math.max(
+        ...entries.map((row) => row.largestPrompt.promptChars),
+      ),
       callSites: [
         ...new Set(entries.map((row) => row.largestPrompt.cacheKeyPrefix)),
       ].sort(),

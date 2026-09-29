@@ -36,7 +36,8 @@ const failed = (row) => Boolean(row.reason) || !row.counts;
 const failureKind = (row) => row.reason?.kind ?? "no-counts";
 
 const failureMessage = (row) =>
-  row.reason?.message ?? (row.reason?.status ? `status ${row.reason.status}` : null);
+  row.reason?.message ??
+  (row.reason?.status ? `status ${row.reason.status}` : null);
 
 function currentOutage(ordered) {
   let start = ordered.length;
@@ -63,7 +64,10 @@ function summariseFailures(failures) {
     .map(([kind, group]) => ({ kind, count: group.length }))
     .sort((a, b) => b.count - a.count);
   const messages = [
-    ...groupBy(failures, (row) => `${failureKind(row)}\u0000${failureMessage(row) ?? ""}`),
+    ...groupBy(
+      failures,
+      (row) => `${failureKind(row)}\u0000${failureMessage(row) ?? ""}`,
+    ),
   ]
     .map(([, group]) => {
       const latest = group[group.length - 1];
@@ -132,16 +136,30 @@ export default function buildHealthReport(rows) {
         },
         dates: ok.length ? (ok[ok.length - 1].counts.dates ?? null) : null,
         metricValue:
-          metric && ok.length ? (ok[ok.length - 1].counts[metric] ?? null) : null,
+          metric && ok.length
+            ? (ok[ok.length - 1].counts[metric] ?? null)
+            : null,
         durationMs: {
           median: ordered.length
-            ? Math.round(percentile(ordered.map((row) => row.durationMs), 0.5))
+            ? Math.round(
+                percentile(
+                  ordered.map((row) => row.durationMs),
+                  0.5,
+                ),
+              )
             : null,
           p90: ordered.length
-            ? Math.round(percentile(ordered.map((row) => row.durationMs), 0.9))
+            ? Math.round(
+                percentile(
+                  ordered.map((row) => row.durationMs),
+                  0.9,
+                ),
+              )
             : null,
         },
-        requests: ordered.length ? Math.round(mean(ordered.map((row) => row.requests))) : null,
+        requests: ordered.length
+          ? Math.round(mean(ordered.map((row) => row.requests)))
+          : null,
         lastProbedAt: ordered[ordered.length - 1].at,
         // Whether the source is failing right now, as opposed to having failed
         // at some point in the window - the question the overview asks.
@@ -166,7 +184,9 @@ export default function buildHealthReport(rows) {
         }),
       };
     })
-    .sort((a, b) => b.failureRate - a.failureRate || a.venue.localeCompare(b.venue));
+    .sort(
+      (a, b) => b.failureRate - a.failureRate || a.venue.localeCompare(b.venue),
+    );
 
   const allFailures = rows.filter(failed);
   // One point per probe cycle, which is hourly. A day's figure averages 24
@@ -202,7 +222,9 @@ export default function buildHealthReport(rows) {
       // Sources whose most recent probe came back with nothing. A source that
       // failed once a week ago and has answered every probe since is not
       // this.
-      failingNow: venues.filter((venue) => venue.latestFailed).map((venue) => venue.venue),
+      failingNow: venues
+        .filter((venue) => venue.latestFailed)
+        .map((venue) => venue.venue),
     },
     byCycle,
     // Shared x-axis for every venue sparkline.

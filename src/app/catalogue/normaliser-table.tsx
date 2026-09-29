@@ -15,7 +15,11 @@ const KIND_ORDER: Record<NormaliserPair["kind"], number> = {
   "different title": 3,
 };
 
-export default function NormaliserTable({ pairs }: { pairs: NormaliserPair[] }) {
+export default function NormaliserTable({
+  pairs,
+}: {
+  pairs: NormaliserPair[];
+}) {
   const columns: Column<NormaliserPair>[] = [
     {
       key: "venueTitle",

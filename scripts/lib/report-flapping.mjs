@@ -35,7 +35,9 @@ import { movieUrl, venueUrl } from "./clusterflick-urls.mjs";
 // Everything the pages need to know about a film a listing sat under. Linked
 // only when it is still in the latest release - an older id's page is gone.
 function filmOf(id, history, latestMovies) {
-  const movie = [...history].reverse().find((run) => run.movies[id])?.movies[id];
+  const movie = [...history].reverse().find((run) => run.movies[id])?.movies[
+    id
+  ];
   return {
     id,
     title: movie?.title ?? id,
@@ -92,8 +94,11 @@ function presenceFlapsOf(showingId, timeline, history) {
       index += 1;
       continue;
     }
-    const end = timeline.findIndex((movieId, at) => at > index && movieId !== null);
-    const lastPerformance = history[index - 1].showings[showingId].lastPerformance;
+    const end = timeline.findIndex(
+      (movieId, at) => at > index && movieId !== null,
+    );
+    const lastPerformance =
+      history[index - 1].showings[showingId].lastPerformance;
     const droppedAt = Date.parse(history[index].publishedAt);
     if (lastPerformance !== null && lastPerformance >= droppedAt) {
       dropouts += 1;
@@ -112,9 +117,12 @@ const latest = (values) =>
   values.filter(Boolean).reduce((a, b) => (a > b ? a : b), null);
 
 export default function buildFlappingReport({ history, venues, latestMovies }) {
-  const showingIds = new Set(history.flatMap((run) => Object.keys(run.showings)));
+  const showingIds = new Set(
+    history.flatMap((run) => Object.keys(run.showings)),
+  );
   const venueIdOf = (showingId) =>
-    history.findLast((run) => run.showings[showingId]).showings[showingId].venueId;
+    history.findLast((run) => run.showings[showingId]).showings[showingId]
+      .venueId;
 
   // Still live: in the latest release, with a performance still ahead of it
   // when that release was published.
@@ -123,7 +131,9 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
   const isLive = (showingId) => {
     const showing = newest.showings[showingId];
     if (!showing) return false;
-    return showing.lastPerformance === null || showing.lastPerformance >= newestAt;
+    return (
+      showing.lastPerformance === null || showing.lastPerformance >= newestAt
+    );
   };
 
   const matchFlaps = [];
@@ -178,14 +188,19 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
           movieId === null ? null : order.indexOf(movieId),
         ),
       }))
-      .sort((a, b) => b.switches - a.switches || a.venue.name.localeCompare(b.venue.name));
+      .sort(
+        (a, b) =>
+          b.switches - a.switches || a.venue.name.localeCompare(b.venue.name),
+      );
     return {
       key,
       films,
       // Flapping in and out of a match reads differently from flapping between
       // two films - the first is a match that only sometimes happens, the
       // second is the matcher choosing between candidates.
-      kind: films.some((film) => !film.matched) ? "sometimes unmatched" : "between films",
+      kind: films.some((film) => !film.matched)
+        ? "sometimes unmatched"
+        : "between films",
       venues: [...new Map(listings.map((l) => [l.venue.id, l.venue])).values()],
       listings,
       switches: Math.max(...listings.map((listing) => listing.switches)),
@@ -200,12 +215,25 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
   // missing from it.
   const listingsAt = (venueId) =>
     history.map(
-      (run) => Object.values(run.showings).filter((showing) => showing.venueId === venueId).length,
+      (run) =>
+        Object.values(run.showings).filter(
+          (showing) => showing.venueId === venueId,
+        ).length,
     );
-  const presenceGroups = [...groupBy(presenceFlaps, (flap) => flap.venue.id)].map(
-    ([venueId, flaps]) => {
-      const listings = flaps
-        .map(({ id, timeline, dropouts, missedRuns, lastReturnAt, movieId, live }) => ({
+  const presenceGroups = [
+    ...groupBy(presenceFlaps, (flap) => flap.venue.id),
+  ].map(([venueId, flaps]) => {
+    const listings = flaps
+      .map(
+        ({
+          id,
+          timeline,
+          dropouts,
+          missedRuns,
+          lastReturnAt,
+          movieId,
+          live,
+        }) => ({
           id,
           film: filmOf(movieId, history, latestMovies),
           timeline,
@@ -213,36 +241,41 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
           missedRuns,
           lastReturnAt,
           live,
-        }))
-        // In the order they went missing, so listings that dropped together
-        // sit together.
-        .sort(
-          (a, b) =>
-            a.timeline.indexOf("out") - b.timeline.indexOf("out") ||
-            a.film.title.localeCompare(b.film.title),
-        );
-      return {
-        key: venueId,
-        venue: {
-          ...flaps[0].venue,
-          url: venues[venueId] ? venueUrl(venues[venueId]) : null,
-        },
-        listings,
-        // Per run, how many of these listings were missing, against how many
-        // the venue carried in all - eight gone from sixty-nine reads very
-        // differently from eight gone from eight.
-        missing: history.map(
-          (_, run) => listings.filter((listing) => listing.timeline[run] === "out").length,
-        ),
-        venueListings: listingsAt(venueId),
-        dropouts: listings.reduce((total, listing) => total + listing.dropouts, 0),
-        liveListings: listings.filter((listing) => listing.live).length,
-        lastReturnAt: latest(listings.map((listing) => listing.lastReturnAt)),
-      };
-    },
-  );
+        }),
+      )
+      // In the order they went missing, so listings that dropped together
+      // sit together.
+      .sort(
+        (a, b) =>
+          a.timeline.indexOf("out") - b.timeline.indexOf("out") ||
+          a.film.title.localeCompare(b.film.title),
+      );
+    return {
+      key: venueId,
+      venue: {
+        ...flaps[0].venue,
+        url: venues[venueId] ? venueUrl(venues[venueId]) : null,
+      },
+      listings,
+      // Per run, how many of these listings were missing, against how many
+      // the venue carried in all - eight gone from sixty-nine reads very
+      // differently from eight gone from eight.
+      missing: history.map(
+        (_, run) =>
+          listings.filter((listing) => listing.timeline[run] === "out").length,
+      ),
+      venueListings: listingsAt(venueId),
+      dropouts: listings.reduce(
+        (total, listing) => total + listing.dropouts,
+        0,
+      ),
+      liveListings: listings.filter((listing) => listing.live).length,
+      lastReturnAt: latest(listings.map((listing) => listing.lastReturnAt)),
+    };
+  });
 
-  const byRecent = (field) => (a, b) => (b[field] ?? "").localeCompare(a[field] ?? "");
+  const byRecent = (field) => (a, b) =>
+    (b[field] ?? "").localeCompare(a[field] ?? "");
 
   return {
     releases: history.map(({ tag, publishedAt }) => ({ tag, publishedAt })),

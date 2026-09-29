@@ -29,8 +29,17 @@ export default function Sparkline({
   }
 
   const padding = { top: 3, right: 2, bottom: 3, left: 2 };
-  const scale = makeScale(width, height, values.length, niceDomain(present), padding);
-  const points: Point[] = values.map((value, index) => ({ x: index, y: value }));
+  const scale = makeScale(
+    width,
+    height,
+    values.length,
+    niceDomain(present),
+    padding,
+  );
+  const points: Point[] = values.map((value, index) => ({
+    x: index,
+    y: value,
+  }));
   const lastIndex = values.findLastIndex((value) => value !== null);
 
   return (

@@ -24,7 +24,10 @@ export default function LlmUsagePage() {
   if (llm.empty) {
     return (
       <>
-        <PageHeader title="LLM usage" meta="No usage rows have been collected yet." />
+        <PageHeader
+          title="LLM usage"
+          meta="No usage rows have been collected yet."
+        />
       </>
     );
   }
@@ -39,14 +42,18 @@ export default function LlmUsagePage() {
 
   // The runs that make up the most recent day, in the order they ran. The day
   // totals elsewhere on the page are sums of exactly these rows.
-  const latestDayRuns = llm.runs.filter((run) => run.date === llm.latest.day.date);
+  const latestDayRuns = llm.runs.filter(
+    (run) => run.date === llm.latest.day.date,
+  );
 
   const stacked = llm.callSites.map((site) => ({
     key: site.name,
     label: site.name,
     slot: callSiteSlots.get(site.name)!,
     values: llm.days.map(
-      (day) => site.byDay.find((entry) => entry.date === day.date)?.estimatedCostUsd ?? 0,
+      (day) =>
+        site.byDay.find((entry) => entry.date === day.date)?.estimatedCostUsd ??
+        0,
     ),
   }));
 
@@ -68,10 +75,11 @@ export default function LlmUsagePage() {
         title="LLM usage"
         meta={
           <>
-            Last {llm.window.windowDays} days, {dateLabel(`${llm.window.firstDate}T12:00:00Z`)}{" "}
-            to {dateLabel(`${llm.window.lastDate}T12:00:00Z`)} · {count(llm.window.runs)}{" "}
-            transform runs on {llm.window.days} days. The month table and projection
-            use the full log.
+            Last {llm.window.windowDays} days,{" "}
+            {dateLabel(`${llm.window.firstDate}T12:00:00Z`)} to{" "}
+            {dateLabel(`${llm.window.lastDate}T12:00:00Z`)} ·{" "}
+            {count(llm.window.runs)} transform runs on {llm.window.days} days.
+            The month table and projection use the full log.
           </>
         }
       />
@@ -119,7 +127,10 @@ export default function LlmUsagePage() {
           ]}
           labels={dayLabels}
           format="money"
-          reference={{ value: llm.costPerDay.mean, label: `mean ${money(llm.costPerDay.mean)}` }}
+          reference={{
+            value: llm.costPerDay.mean,
+            label: `mean ${money(llm.costPerDay.mean)}`,
+          }}
         />
       </Panel>
 
@@ -187,7 +198,9 @@ export default function LlmUsagePage() {
                   <td>
                     <span
                       className={styles.swatch}
-                      style={{ background: `var(--series-${callSiteSlots.get(site.name)})` }}
+                      style={{
+                        background: `var(--series-${callSiteSlots.get(site.name)})`,
+                      }}
                       aria-hidden="true"
                     />
                     <span className="mono">{site.name}</span>
@@ -195,8 +208,12 @@ export default function LlmUsagePage() {
                   <td className={styles.right}>{count(site.calls)}</td>
                   <td className={styles.right}>{count(site.cacheMisses)}</td>
                   <td className={styles.right}>{percent(site.missRate, 1)}</td>
-                  <td className={styles.right}>{money(site.estimatedCostUsd)}</td>
-                  <td className={styles.right}>{money(site.costPerThousandCalls)}</td>
+                  <td className={styles.right}>
+                    {money(site.estimatedCostUsd)}
+                  </td>
+                  <td className={styles.right}>
+                    {money(site.costPerThousandCalls)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -242,9 +259,15 @@ export default function LlmUsagePage() {
                   <td className={styles.right}>{month.days}</td>
                   <td className={styles.right}>{count(month.runs)}</td>
                   <td className={styles.right}>{count(month.calls)}</td>
-                  <td className={styles.right}>{percent(month.cacheHitRate, 1)}</td>
-                  <td className={styles.right}>{compactCount(month.promptTokens)}</td>
-                  <td className={styles.right}>{money(month.estimatedCostUsd)}</td>
+                  <td className={styles.right}>
+                    {percent(month.cacheHitRate, 1)}
+                  </td>
+                  <td className={styles.right}>
+                    {compactCount(month.promptTokens)}
+                  </td>
+                  <td className={styles.right}>
+                    {money(month.estimatedCostUsd)}
+                  </td>
                   <td className={styles.right}>{money(month.costPerDay)}</td>
                 </tr>
               ))}
@@ -290,11 +313,11 @@ export default function LlmUsagePage() {
         note={
           llm.venueUsage.available ? (
             <>
-              {llm.venueUsage.venues.length} of {llm.venueUsage.venueCount} venues
-              needed the LLM on the transform run of{" "}
-              {dateTimeLabel(llm.venueUsage.runAt)}; the rest were handled by the
-              deterministic parsers. &ldquo;Uncached&rdquo; calls are the ones that
-              were paid for.
+              {llm.venueUsage.venues.length} of {llm.venueUsage.venueCount}{" "}
+              venues needed the LLM on the transform run of{" "}
+              {dateTimeLabel(llm.venueUsage.runAt)}; the rest were handled by
+              the deterministic parsers. &ldquo;Uncached&rdquo; calls are the
+              ones that were paid for.
             </>
           ) : (
             <>

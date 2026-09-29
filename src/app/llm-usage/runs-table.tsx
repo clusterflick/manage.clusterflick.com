@@ -62,7 +62,11 @@ export default function RunsTable({
                         className={styles.toggle}
                         onClick={() => toggleRun(run.runId)}
                         aria-expanded={isOpen}
-                        aria-label={isOpen ? "Hide usage by provider" : "Show usage by provider"}
+                        aria-label={
+                          isOpen
+                            ? "Hide usage by provider"
+                            : "Show usage by provider"
+                        }
                       >
                         <span aria-hidden="true">{isOpen ? "▾" : "▸"}</span>
                       </button>
@@ -70,14 +74,24 @@ export default function RunsTable({
                   </td>
                   <td className={styles.strong}>
                     {run.at ? timeLabel(run.at) : `Run ${index + 1}`}
-                    {index === 0 && <span className={styles.tag}>cold cache</span>}
+                    {index === 0 && (
+                      <span className={styles.tag}>cold cache</span>
+                    )}
                   </td>
                   <td className={styles.right}>{count(run.calls)}</td>
-                  <td className={styles.right}>{percent(run.cacheHitRate, 1)}</td>
-                  <td className={styles.right}>{compactCount(run.promptTokens)}</td>
-                  <td className={styles.right}>{money(run.estimatedCostUsd)}</td>
                   <td className={styles.right}>
-                    {dayCost > 0 ? percent(run.estimatedCostUsd / dayCost, 0) : "—"}
+                    {percent(run.cacheHitRate, 1)}
+                  </td>
+                  <td className={styles.right}>
+                    {compactCount(run.promptTokens)}
+                  </td>
+                  <td className={styles.right}>
+                    {money(run.estimatedCostUsd)}
+                  </td>
+                  <td className={styles.right}>
+                    {dayCost > 0
+                      ? percent(run.estimatedCostUsd / dayCost, 0)
+                      : "—"}
                   </td>
                   <td className={styles.right}>
                     {count(run.venuesWithLlmUsage)} of {count(run.venueCount)}
@@ -116,7 +130,13 @@ export default function RunsTable({
 // One row per provider the run called, with the call sites that make up its
 // share. Tokens are only logged per run, not per call site, so they can't be
 // split here.
-function ProviderBreakdown({ run, slots }: { run: Run; slots: Record<string, number> }) {
+function ProviderBreakdown({
+  run,
+  slots,
+}: {
+  run: Run;
+  slots: Record<string, number>;
+}) {
   return (
     <table className={styles.providerTable}>
       <thead>
@@ -139,7 +159,9 @@ function ProviderBreakdown({ run, slots }: { run: Run; slots: Record<string, num
                   <span key={site.name} className={styles.callSiteChip}>
                     <span
                       className={styles.swatch}
-                      style={{ background: `var(--series-${slots[site.name] ?? 8})` }}
+                      style={{
+                        background: `var(--series-${slots[site.name] ?? 8})`,
+                      }}
                       aria-hidden="true"
                     />
                     <span className="mono">{site.name}</span>

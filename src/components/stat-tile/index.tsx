@@ -26,7 +26,9 @@ export default function StatTile({
     <>
       <div className={styles.top}>
         <span className={styles.label}>{label}</span>
-        {severity && <StatusPill severity={severity}>{severityLabel}</StatusPill>}
+        {severity && (
+          <StatusPill severity={severity}>{severityLabel}</StatusPill>
+        )}
       </div>
       <div className={`${styles.value} numeric`}>{value}</div>
       {detail && <div className={styles.detail}>{detail}</div>}

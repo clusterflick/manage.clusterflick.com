@@ -110,9 +110,14 @@ export async function downloadFile(
   // single 500 from release storage failed the whole thing.
   for (let attempt = 1; ; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { ...headers, Accept: accept } });
+      const response = await fetch(url, {
+        headers: { ...headers, Accept: accept },
+      });
       if (response.ok && response.body) {
-        await pipeline(Readable.fromWeb(response.body), createWriteStream(destination));
+        await pipeline(
+          Readable.fromWeb(response.body),
+          createWriteStream(destination),
+        );
         return destination;
       }
       // Unread, the body holds its connection open through the retries.
@@ -171,13 +176,21 @@ export async function downloadFile(
 // A run still in progress has no conclusion and no duration, so counting one
 // would either read as a failure or skew the average depending on which field
 // you took.
-export async function listWorkflowRuns(repo, workflow, { since, perPage = 100 } = {}) {
+export async function listWorkflowRuns(
+  repo,
+  workflow,
+  { since, perPage = 100 } = {},
+) {
   // Doubling the window is the cheap end of the trade: a re-run triggered more
   // than a window after its original creation is dropped, which has not been
   // seen, and the cost is a page or two more per workflow. There is no exact
   // answer short of reading every run a workflow has ever had, because the API
   // can only bound on the field it orders by.
-  const floor = since ? new Date(Date.parse(since) - WINDOW_MARGIN_MS).toISOString().replace(/\.\d+Z$/, "Z") : undefined;
+  const floor = since
+    ? new Date(Date.parse(since) - WINDOW_MARGIN_MS)
+        .toISOString()
+        .replace(/\.\d+Z$/, "Z")
+    : undefined;
   const collected = [];
 
   // Bounded rather than `while (true)`. A `total_count` that disagrees with the

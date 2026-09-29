@@ -21,7 +21,12 @@ export const metadata = { title: "Venues — Clusterflick manage" };
 
 export default function VenuesPage() {
   if (health.empty) {
-    return <PageHeader title="Venues" meta="No health probes have been collected yet." />;
+    return (
+      <PageHeader
+        title="Venues"
+        meta="No health probes have been collected yet."
+      />
+    );
   }
 
   const builtAt = new Date(overview.fetchedAt).getTime();
@@ -34,9 +39,9 @@ export default function VenuesPage() {
         title="Venue health"
         meta={
           <>
-            {count(health.window.probes)} probes across {health.window.venues} sources,{" "}
-            {health.window.cycles} cycles over {health.window.days} days (
-            {health.window.firstDay} to {health.window.lastDay})
+            {count(health.window.probes)} probes across {health.window.venues}{" "}
+            sources, {health.window.cycles} cycles over {health.window.days}{" "}
+            days ({health.window.firstDay} to {health.window.lastDay})
           </>
         }
       />
@@ -50,7 +55,8 @@ export default function VenuesPage() {
         }
         note={
           <>
-            As of the latest probe cycle, <RelativeTime value={lastCycleAt} builtAt={builtAt} /> (
+            As of the latest probe cycle,{" "}
+            <RelativeTime value={lastCycleAt} builtAt={builtAt} /> (
             {dateTimeLabel(lastCycleAt)}).
           </>
         }
@@ -77,13 +83,20 @@ export default function VenuesPage() {
                   const outage = venue.currentOutage!;
                   return (
                     <tr key={venue.venue}>
-                      <td className={`${styles.venueId} mono`}>{venue.venue}</td>
+                      <td className={`${styles.venueId} mono`}>
+                        {venue.venue}
+                      </td>
                       <td className={styles.nowrap}>{outage.kind}</td>
-                      <td className={styles.message}>{outage.message ?? "—"}</td>
+                      <td className={styles.message}>
+                        {outage.message ?? "—"}
+                      </td>
                       <td className={`${styles.right} ${styles.nowrap}`}>
-                        {outage.lastOkAt ? dateTimeLabel(outage.since) : "whole window"}
+                        {outage.lastOkAt
+                          ? dateTimeLabel(outage.since)
+                          : "whole window"}
                         <div className={styles.subFigure}>
-                          {count(outage.probes)} {outage.probes === 1 ? "probe" : "probes"} in a row
+                          {count(outage.probes)}{" "}
+                          {outage.probes === 1 ? "probe" : "probes"} in a row
                         </div>
                       </td>
                     </tr>
@@ -174,9 +187,12 @@ export default function VenuesPage() {
                   <td className="mono">{failure.venue}</td>
                   <td className={styles.nowrap}>{failure.kind}</td>
                   <td className={styles.message}>
-                    {failure.message ?? (failure.status ? `status ${failure.status}` : "—")}
+                    {failure.message ??
+                      (failure.status ? `status ${failure.status}` : "—")}
                   </td>
-                  <td className={styles.right}>{duration(failure.durationMs)}</td>
+                  <td className={styles.right}>
+                    {duration(failure.durationMs)}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -36,7 +36,8 @@ function buildOverview({ catalogue, llm, pipeline, health }, fetchedAt) {
       filmMatchRate: catalogue.matching.filmMatchRate,
       unmatchedFilms: catalogue.matching.unmatchedFilms,
       posterCoverage:
-        catalogue.fieldCoverage.find((field) => field.key === "posterPath")?.coverage ?? null,
+        catalogue.fieldCoverage.find((field) => field.key === "posterPath")
+          ?.coverage ?? null,
     },
     llm: llm.empty
       ? null
@@ -91,7 +92,10 @@ async function main() {
 
   const catalogue = buildCatalogueReport(combined, matched, {
     combined: combinedRelease,
-    matched: { tag: matchedRelease.tag, publishedAt: matchedRelease.publishedAt },
+    matched: {
+      tag: matchedRelease.tag,
+      publishedAt: matchedRelease.publishedAt,
+    },
   });
   console.log(
     `· catalogue — ${catalogue.totals.movies} movies, ${catalogue.matching.unmatchedFilms} unmatched film listings`,
@@ -114,7 +118,10 @@ async function main() {
     venues: combined.venues,
     source: {
       transformed: await readJson(source("transformed-release.json")),
-      scripts: { sha: normaliserSource.sha, committedAt: normaliserSource.committedAt },
+      scripts: {
+        sha: normaliserSource.sha,
+        committedAt: normaliserSource.committedAt,
+      },
     },
   });
   console.log(
@@ -150,7 +157,9 @@ async function main() {
 
   const runsByKey = {};
   for (const target of WORKFLOWS) {
-    runsByKey[target.key] = await readJson(source("runs", `${target.key}.json`));
+    runsByKey[target.key] = await readJson(
+      source("runs", `${target.key}.json`),
+    );
   }
   const pipeline = buildPipelineReport(
     WORKFLOWS,
@@ -168,7 +177,10 @@ async function main() {
       : `· venue health — ${health.window.probes} probes across ${health.window.venues} venues`,
   );
 
-  const overview = buildOverview({ catalogue, llm, pipeline, health }, fetchedAt);
+  const overview = buildOverview(
+    { catalogue, llm, pipeline, health },
+    fetchedAt,
+  );
 
   for (const [name, value] of Object.entries({
     overview,
@@ -178,8 +190,12 @@ async function main() {
     health,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
-    const { size } = await readFile(file).then((buffer) => ({ size: buffer.length }));
-    console.log(`  wrote src/generated/${name}.json (${(size / 1024).toFixed(0)}KB)`);
+    const { size } = await readFile(file).then((buffer) => ({
+      size: buffer.length,
+    }));
+    console.log(
+      `  wrote src/generated/${name}.json (${(size / 1024).toFixed(0)}KB)`,
+    );
   }
 }
 

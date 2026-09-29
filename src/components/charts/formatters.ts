@@ -51,8 +51,7 @@ export function tickFormatter(
   ticks: number[],
 ): (value: number) => string {
   const max = Math.max(...ticks.map(Math.abs), 0);
-  const step =
-    ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : max || 1;
+  const step = ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : max || 1;
 
   switch (key) {
     case "percent": {

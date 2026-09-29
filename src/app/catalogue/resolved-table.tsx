@@ -10,7 +10,11 @@ import styles from "./page.module.scss";
 // `includedMovies` instead. Shown in full because the whole point is that the
 // headline match rate depends on counting these as successes, and a number you
 // cannot check is a number you have to trust.
-export default function ResolvedTable({ listings }: { listings: ResolvedListing[] }) {
+export default function ResolvedTable({
+  listings,
+}: {
+  listings: ResolvedListing[];
+}) {
   const columns: Column<ResolvedListing>[] = [
     {
       key: "title",
@@ -21,7 +25,9 @@ export default function ResolvedTable({ listings }: { listings: ResolvedListing[
           <a href={listing.url} target="_blank" rel="noreferrer">
             {listing.title}
           </a>
-          <div className={styles.categories}>{listing.categories.join(" · ")}</div>
+          <div className={styles.categories}>
+            {listing.categories.join(" · ")}
+          </div>
         </div>
       ),
     },
@@ -38,7 +44,9 @@ export default function ResolvedTable({ listings }: { listings: ResolvedListing[
               title={part.hasPoster ? undefined : "No poster on this part"}
             >
               {part.title}
-              {part.year && <span className={styles.partYear}>{part.year}</span>}
+              {part.year && (
+                <span className={styles.partYear}>{part.year}</span>
+              )}
             </span>
           ))}
         </div>
@@ -55,7 +63,8 @@ export default function ResolvedTable({ listings }: { listings: ResolvedListing[
     {
       key: "venues",
       header: "Venues",
-      sortValue: (listing) => listing.venues.map((venue) => venue.name).join(", "),
+      sortValue: (listing) =>
+        listing.venues.map((venue) => venue.name).join(", "),
       render: (listing) => (
         <span className={styles.venues}>
           {listing.venues.map((venue) => venue.name).join(", ")}

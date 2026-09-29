@@ -4,7 +4,13 @@ import StatusPill from "@/components/status-pill";
 import LineChart from "@/components/charts/line-chart";
 import { pipeline } from "@/lib/reports";
 import { rateStatus } from "@/lib/status";
-import { count, dateLabel, dateTimeLabel, duration, percent } from "@/lib/format";
+import {
+  count,
+  dateLabel,
+  dateTimeLabel,
+  duration,
+  percent,
+} from "@/lib/format";
 import styles from "./page.module.scss";
 
 export const metadata = { title: "Pipeline — Clusterflick manage" };
@@ -44,25 +50,25 @@ export default function PipelinePage() {
             note={
               noData ? (
                 <>
-                  No run history came back for this flow. Every flow here runs at
-                  least daily, so these figures are missing rather than zero —
-                  GitHub&apos;s run list intermittently answers from a stale
+                  No run history came back for this flow. Every flow here runs
+                  at least daily, so these figures are missing rather than zero
+                  — GitHub&apos;s run list intermittently answers from a stale
                   index, months behind and with nothing in the response to say
                   so. Rebuilding usually clears it.
                 </>
               ) : workflow.skippedNoOps > 0 ? (
                 <>
-                  {count(workflow.skippedNoOps)} runs are excluded: this flow opens
-                  with a &ldquo;have we already released today?&rdquo; job, and when
-                  it has, every other job is skipped. Those runs finish in seconds
-                  having done nothing, and counting them would report a build time
-                  of about nine seconds.
+                  {count(workflow.skippedNoOps)} runs are excluded: this flow
+                  opens with a &ldquo;have we already released today?&rdquo;
+                  job, and when it has, every other job is skipped. Those runs
+                  finish in seconds having done nothing, and counting them would
+                  report a build time of about nine seconds.
                 </>
               ) : workflow.superseded > 0 ? (
                 <>
                   {count(workflow.superseded)} cancelled runs are excluded: this
-                  flow cancels a build in flight when newer data arrives, so those
-                  runs were replaced by a later build rather than failing.
+                  flow cancels a build in flight when newer data arrives, so
+                  those runs were replaced by a later build rather than failing.
                 </>
               ) : undefined
             }
@@ -73,11 +79,12 @@ export default function PipelinePage() {
                     ? "no data"
                     : `${percent(workflow.successRate)} succeeded`}
                 </StatusPill>
-                {workflow.reportsUnassisted && workflow.unassistedRate !== null && (
-                  <StatusPill severity={rateStatus(workflow.unassistedRate)}>
-                    {percent(workflow.unassistedRate)} unassisted
-                  </StatusPill>
-                )}
+                {workflow.reportsUnassisted &&
+                  workflow.unassistedRate !== null && (
+                    <StatusPill severity={rateStatus(workflow.unassistedRate)}>
+                      {percent(workflow.unassistedRate)} unassisted
+                    </StatusPill>
+                  )}
               </>
             }
           >
@@ -125,7 +132,11 @@ export default function PipelinePage() {
                 <span className={styles.figureLabel}>Last run</span>
                 <span className={styles.figureValue}>
                   {workflow.lastRun ? (
-                    <a href={workflow.lastRun.url} target="_blank" rel="noreferrer">
+                    <a
+                      href={workflow.lastRun.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
                       {dateTimeLabel(workflow.lastRun.startedAt)}
                     </a>
                   ) : (
@@ -178,7 +189,9 @@ export default function PipelinePage() {
               <details className={styles.failures}>
                 <summary>
                   {workflow.recentFailures.length} recent{" "}
-                  {workflow.recentFailures.length === 1 ? "failure" : "failures"}
+                  {workflow.recentFailures.length === 1
+                    ? "failure"
+                    : "failures"}
                 </summary>
                 <ul className={styles.failureList}>
                   {workflow.recentFailures.map((failure) => (

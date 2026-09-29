@@ -12,14 +12,24 @@ import styles from "./page.module.scss";
 // What each failure kind means, so a fortnight of 503s is not read as a scraper
 // to fix.
 const KIND_MEANING: Record<string, string> = {
-  "probe-error": "The probe itself failed — a timeout, a bad status, or a fetch that never completed. Ours to fix.",
-  "source-maintenance": "The venue answered with a maintenance status. Theirs to fix; worth watching if it persists.",
-  "source-queue": "The venue put the probe in a virtual waiting room. Expected around on-sales.",
-  "bot-challenge": "The venue's bot protection challenged the probe instead of answering. Usually a blocked IP rather than an outage.",
+  "probe-error":
+    "The probe itself failed — a timeout, a bad status, or a fetch that never completed. Ours to fix.",
+  "source-maintenance":
+    "The venue answered with a maintenance status. Theirs to fix; worth watching if it persists.",
+  "source-queue":
+    "The venue put the probe in a virtual waiting room. Expected around on-sales.",
+  "bot-challenge":
+    "The venue's bot protection challenged the probe instead of answering. Usually a blocked IP rather than an outage.",
   "no-counts": "The probe completed but reported no counts at all.",
 };
 
-function FailureSummary({ venue, builtAt }: { venue: HealthVenue; builtAt: number }) {
+function FailureSummary({
+  venue,
+  builtAt,
+}: {
+  venue: HealthVenue;
+  builtAt: number;
+}) {
   const { kinds, messages } = venue.failureSummary;
   return (
     <div className={styles.failureSummary}>
@@ -30,7 +40,8 @@ function FailureSummary({ venue, builtAt }: { venue: HealthVenue; builtAt: numbe
               {kind.kind} × {count(kind.count)}
             </span>
             <span className={styles.kindMeaning}>
-              {KIND_MEANING[kind.kind] ?? "Not a kind this report has been taught."}
+              {KIND_MEANING[kind.kind] ??
+                "Not a kind this report has been taught."}
             </span>
           </li>
         ))}
@@ -38,7 +49,9 @@ function FailureSummary({ venue, builtAt }: { venue: HealthVenue; builtAt: numbe
       <ul className={styles.messageList}>
         {messages.map((entry) => (
           <li key={`${entry.kind}-${entry.message}`}>
-            <span className={styles.message}>{entry.message ?? "No message"}</span>
+            <span className={styles.message}>
+              {entry.message ?? "No message"}
+            </span>
             <span className={styles.messageMeta}>
               {entry.count > 1 &&
                 `${count(entry.count)} times, ${dateTimeLabel(entry.firstAt)} to `}
@@ -112,7 +125,11 @@ export default function HealthTable({
       width: "70px",
       sortValue: (venue) => venue.dates ?? -1,
       render: (venue) =>
-        venue.dates === null ? <span className={styles.muted}>—</span> : count(venue.dates),
+        venue.dates === null ? (
+          <span className={styles.muted}>—</span>
+        ) : (
+          count(venue.dates)
+        ),
     },
     {
       key: "metric",
@@ -157,7 +174,9 @@ export default function HealthTable({
       render: (venue) => (
         <>
           {duration(venue.durationMs.median)}
-          <div className={styles.subFigure}>p90 {duration(venue.durationMs.p90)}</div>
+          <div className={styles.subFigure}>
+            p90 {duration(venue.durationMs.p90)}
+          </div>
         </>
       ),
     },
@@ -184,7 +203,9 @@ export default function HealthTable({
       searchPlaceholder="Filter sources…"
       initialSort={{ key: "failures", direction: "desc" }}
       renderExpanded={(venue) =>
-        venue.failures === 0 ? null : <FailureSummary venue={venue} builtAt={builtAt} />
+        venue.failures === 0 ? null : (
+          <FailureSummary venue={venue} builtAt={builtAt} />
+        )
       }
     />
   );

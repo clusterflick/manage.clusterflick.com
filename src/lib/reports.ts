@@ -42,7 +42,12 @@ export type SilentVenue = {
 // A listing with no single film of its own that resolved into several - a
 // double bill, a marathon, a shorts block. Matched, despite `isUnmatched`.
 export type ResolvedListing = MovieSummary & {
-  parts: { id: string; title: string; year: string | null; hasPoster: boolean }[];
+  parts: {
+    id: string;
+    title: string;
+    year: string | null;
+    hasPoster: boolean;
+  }[];
 };
 
 export type FieldCoverage = {
@@ -156,7 +161,13 @@ export type CatalogueReport = {
   unmatchedFilms: MovieSummary[];
   unmatchedOther: MovieSummary[];
   fieldCoverage: FieldCoverage[];
-  ratingCoverage: { key: string; label: string; present: number; total: number; coverage: number }[];
+  ratingCoverage: {
+    key: string;
+    label: string;
+    present: number;
+    total: number;
+    coverage: number;
+  }[];
   byVenue: {
     id: string;
     name: string;
@@ -186,7 +197,11 @@ export type CatalogueReport = {
     releases: FlappingRelease[];
     listingsSeen: number;
     match: { listings: number; groups: MatchFlapGroup[] };
-    presence: { listings: number; liveListings: number; groups: PresenceFlapGroup[] };
+    presence: {
+      listings: number;
+      liveListings: number;
+      groups: PresenceFlapGroup[];
+    };
   };
 };
 
@@ -213,7 +228,12 @@ export type LlmCallSite = {
   missRate: number;
   estimatedCostUsd: number;
   costPerThousandCalls: number;
-  byDay: { date: string; calls: number; cacheMisses: number; estimatedCostUsd: number }[];
+  byDay: {
+    date: string;
+    calls: number;
+    cacheMisses: number;
+    estimatedCostUsd: number;
+  }[];
 };
 
 // What one venue asked of the LLM on a single transform run.
@@ -303,7 +323,12 @@ export type LlmProviderUsage = {
   cacheMisses: number;
   cacheHitRate: number;
   estimatedCostUsd: number;
-  callSites: { name: string; calls: number; cacheMisses: number; estimatedCostUsd: number }[];
+  callSites: {
+    name: string;
+    calls: number;
+    cacheMisses: number;
+    estimatedCostUsd: number;
+  }[];
 };
 
 export type WorkflowRunRef = {
@@ -388,7 +413,12 @@ export type HealthVenue = {
   failures: number;
   failureRate: number;
   emptyAnswers: number;
-  films: { latest: number | null; median: number | null; min: number | null; max: number | null };
+  films: {
+    latest: number | null;
+    median: number | null;
+    min: number | null;
+    max: number | null;
+  };
   dates: number | null;
   metricValue: number | null;
   durationMs: { median: number | null; p90: number | null };
@@ -431,7 +461,12 @@ export type HealthReport = {
     venuesWithFailures: number;
     failingNow: string[];
   };
-  byCycle: { at: string; probes: number; failures: number; failureRate: number }[];
+  byCycle: {
+    at: string;
+    probes: number;
+    failures: number;
+    failureRate: number;
+  }[];
   cycles: string[];
   venues: HealthVenue[];
   failures: {

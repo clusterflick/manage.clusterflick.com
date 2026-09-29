@@ -19,7 +19,15 @@
 //   SKIP_EXISTING - reuse anything already in ./source-data
 
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { WORKFLOWS } from "./lib/workflows.mjs";
@@ -67,33 +75,42 @@ async function step(label, file, work) {
 
 // data-combined and data-matched: the current state of the catalogue.
 async function fetchPipelineOutput() {
-  await step("combined data", path.join(OUT, "combined-data.json"), async () => {
-    const release = await latestRelease("clusterflick/data-combined");
-    const asset = release.assets.find((a) => a.name === "combined-data.json");
-    if (!asset) throw new Error("data-combined has no combined-data.json asset");
-    await downloadAsset(asset, path.join(OUT, "combined-data.json"));
-    await writeJson(path.join(OUT, "combined-release.json"), {
-      tag: release.tag_name,
-      publishedAt: release.published_at,
-      sizeBytes: asset.size,
-    });
-    return `${release.tag_name} (${(asset.size / 1048576).toFixed(1)}MB)`;
-  });
+  await step(
+    "combined data",
+    path.join(OUT, "combined-data.json"),
+    async () => {
+      const release = await latestRelease("clusterflick/data-combined");
+      const asset = release.assets.find((a) => a.name === "combined-data.json");
+      if (!asset)
+        throw new Error("data-combined has no combined-data.json asset");
+      await downloadAsset(asset, path.join(OUT, "combined-data.json"));
+      await writeJson(path.join(OUT, "combined-release.json"), {
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+        sizeBytes: asset.size,
+      });
+      return `${release.tag_name} (${(asset.size / 1048576).toFixed(1)}MB)`;
+    },
+  );
 
-  await step("matched data", path.join(OUT, "matched", "imdb.json"), async () => {
-    const release = await latestRelease("clusterflick/data-matched");
-    // moviedb.json is the poster/metadata source; the rest are the rating
-    // providers. All of them are small enough to take whole.
-    for (const asset of release.assets) {
-      await downloadAsset(asset, path.join(OUT, "matched", asset.name));
-    }
-    await writeJson(path.join(OUT, "matched-release.json"), {
-      tag: release.tag_name,
-      publishedAt: release.published_at,
-      assets: release.assets.map(({ name, size }) => ({ name, size })),
-    });
-    return `${release.tag_name} (${release.assets.length} providers)`;
-  });
+  await step(
+    "matched data",
+    path.join(OUT, "matched", "imdb.json"),
+    async () => {
+      const release = await latestRelease("clusterflick/data-matched");
+      // moviedb.json is the poster/metadata source; the rest are the rating
+      // providers. All of them are small enough to take whole.
+      for (const asset of release.assets) {
+        await downloadAsset(asset, path.join(OUT, "matched", asset.name));
+      }
+      await writeJson(path.join(OUT, "matched-release.json"), {
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+        assets: release.assets.map(({ name, size }) => ({ name, size })),
+      });
+      return `${release.tag_name} (${release.assets.length} providers)`;
+    },
+  );
 }
 
 // Earlier data-combined releases, for spotting a listing that flaps between
@@ -128,7 +145,8 @@ function snapshotOf(combined) {
     }
     // Matched the way the catalogue report counts it: outright, or resolved
     // into the films of a double bill.
-    const matched = !movie.isUnmatched || (movie.includedMovies?.length ?? 0) > 0;
+    const matched =
+      !movie.isUnmatched || (movie.includedMovies?.length ?? 0) > 0;
     movies[movie.id] = { title: movie.title, matched };
     for (const showing of Object.values(movie.showings)) {
       showings[showing.id] = {
@@ -138,30 +156,42 @@ function snapshotOf(combined) {
       };
     }
   }
-  return { version: SNAPSHOT_VERSION, generatedAt: combined.generatedAt, showings, movies };
+  return {
+    version: SNAPSHOT_VERSION,
+    generatedAt: combined.generatedAt,
+    showings,
+    movies,
+  };
 }
 
 async function fetchCombinedHistory() {
   const dir = path.join(OUT, "combined-history");
   await step("combined history", path.join(dir, "index.json"), async () => {
     const releases = (await listReleases("clusterflick/data-combined"))
-      .filter((release) => release.assets.some((a) => a.name === "combined-data.json"))
+      .filter((release) =>
+        release.assets.some((a) => a.name === "combined-data.json"),
+      )
       .sort((a, b) => a.published_at.localeCompare(b.published_at))
       .slice(-FLAP_RELEASES);
     // The newest is usually the one fetchPipelineOutput just downloaded.
-    const latest = await readJson(path.join(OUT, "combined-release.json")).catch(() => null);
+    const latest = await readJson(
+      path.join(OUT, "combined-release.json"),
+    ).catch(() => null);
 
     await rm(dir, { recursive: true, force: true });
     let downloaded = 0;
     for (const release of releases) {
       const cached = path.join(HISTORY_CACHE, `${release.tag_name}.json`);
       const current =
-        (await exists(cached)) && (await readJson(cached)).version === SNAPSHOT_VERSION;
+        (await exists(cached)) &&
+        (await readJson(cached)).version === SNAPSHOT_VERSION;
       if (!current) {
         let combinedFile = path.join(OUT, "combined-data.json");
         if (latest?.tag !== release.tag_name) {
           combinedFile = path.join(OUT, "combined-history.tmp.json");
-          const asset = release.assets.find((a) => a.name === "combined-data.json");
+          const asset = release.assets.find(
+            (a) => a.name === "combined-data.json",
+          );
           await downloadAsset(asset, combinedFile);
           downloaded += 1;
         }
@@ -173,14 +203,19 @@ async function fetchCombinedHistory() {
     }
 
     // Releases that have aged out of the window drop out of the cache too.
-    const wanted = new Set(releases.map((release) => `${release.tag_name}.json`));
+    const wanted = new Set(
+      releases.map((release) => `${release.tag_name}.json`),
+    );
     for (const file of await readdir(HISTORY_CACHE).catch(() => [])) {
       if (!wanted.has(file)) await rm(path.join(HISTORY_CACHE, file));
     }
 
     await writeJson(
       path.join(dir, "index.json"),
-      releases.map((release) => ({ tag: release.tag_name, publishedAt: release.published_at })),
+      releases.map((release) => ({
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+      })),
     );
     return `${releases.length} releases (${downloaded} downloaded)`;
   });
@@ -199,7 +234,9 @@ async function fetchLlmUsage() {
 
     const rows = [];
     for (const release of months) {
-      const asset = release.assets.find((a) => a.name === "llm-usage-log.jsonl");
+      const asset = release.assets.find(
+        (a) => a.name === "llm-usage-log.jsonl",
+      );
       if (!asset) continue;
       const file = path.join(OUT, "llm", `${release.tag_name}.jsonl`);
       await downloadAsset(asset, file);
@@ -210,7 +247,8 @@ async function fetchLlmUsage() {
     // same run cannot show up twice in the stitched series.
     const byRun = new Map(rows.map((row) => [row.runId, row]));
     const ordered = [...byRun.values()].sort(
-      (a, b) => (a.at ?? a.date).localeCompare(b.at ?? b.date) || a.runId - b.runId,
+      (a, b) =>
+        (a.at ?? a.date).localeCompare(b.at ?? b.date) || a.runId - b.runId,
     );
     await writeJson(path.join(OUT, "llm-usage.json"), ordered);
     return `${ordered.length} runs across ${months.length} months`;
@@ -253,22 +291,26 @@ async function fetchVenueHealth() {
 // it differs from the one it picks to display, so the normaliser report cannot
 // be built from combined-data. One asset per venue, around 20MB in all.
 async function fetchTransformed() {
-  await step("transformed data", path.join(OUT, "transformed-release.json"), async () => {
-    const release = await latestRelease("clusterflick/data-transformed");
-    const dir = path.join(OUT, "transformed");
-    // Cleared first so a venue dropped from the pipeline doesn't linger here
-    // from an older release.
-    await rm(dir, { recursive: true, force: true });
-    await mapWithConcurrency(release.assets, 8, (asset) =>
-      downloadAsset(asset, path.join(dir, asset.name)),
-    );
-    await writeJson(path.join(OUT, "transformed-release.json"), {
-      tag: release.tag_name,
-      publishedAt: release.published_at,
-      venues: release.assets.length,
-    });
-    return `${release.tag_name} (${release.assets.length} venues)`;
-  });
+  await step(
+    "transformed data",
+    path.join(OUT, "transformed-release.json"),
+    async () => {
+      const release = await latestRelease("clusterflick/data-transformed");
+      const dir = path.join(OUT, "transformed");
+      // Cleared first so a venue dropped from the pipeline doesn't linger here
+      // from an older release.
+      await rm(dir, { recursive: true, force: true });
+      await mapWithConcurrency(release.assets, 8, (asset) =>
+        downloadAsset(asset, path.join(dir, asset.name)),
+      );
+      await writeJson(path.join(OUT, "transformed-release.json"), {
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+        venues: release.assets.length,
+      });
+      return `${release.tag_name} (${release.assets.length} venues)`;
+    },
+  );
 }
 
 // The title normaliser the matcher runs, taken from clusterflick/scripts at the
@@ -277,37 +319,41 @@ async function fetchTransformed() {
 // npm packages resolve from this project's node_modules, which is why
 // `diacritics` is a dependency here.
 async function fetchNormaliser() {
-  await step("title normaliser", path.join(OUT, "normaliser", "source.json"), async () => {
-    const commit = await api(
-      "https://api.github.com/repos/clusterflick/scripts/commits/main",
-      "clusterflick/scripts head",
-    );
-    const dir = path.join(OUT, "normaliser");
-    await rm(dir, { recursive: true, force: true });
-    const queue = ["normalize-title.js"];
-    const seen = new Set();
-    while (queue.length) {
-      const file = queue.shift();
-      if (seen.has(file)) continue;
-      seen.add(file);
-      const destination = path.join(dir, file);
-      await downloadFile(
-        `https://raw.githubusercontent.com/clusterflick/scripts/${commit.sha}/common/${file}`,
-        destination,
-        `common/${file}`,
+  await step(
+    "title normaliser",
+    path.join(OUT, "normaliser", "source.json"),
+    async () => {
+      const commit = await api(
+        "https://api.github.com/repos/clusterflick/scripts/commits/main",
+        "clusterflick/scripts head",
       );
-      const source = await readFile(destination, "utf8");
-      for (const [, local] of source.matchAll(/require\("\.\/([^"]+)"\)/g)) {
-        queue.push(local.endsWith(".js") ? local : `${local}.js`);
+      const dir = path.join(OUT, "normaliser");
+      await rm(dir, { recursive: true, force: true });
+      const queue = ["normalize-title.js"];
+      const seen = new Set();
+      while (queue.length) {
+        const file = queue.shift();
+        if (seen.has(file)) continue;
+        seen.add(file);
+        const destination = path.join(dir, file);
+        await downloadFile(
+          `https://raw.githubusercontent.com/clusterflick/scripts/${commit.sha}/common/${file}`,
+          destination,
+          `common/${file}`,
+        );
+        const source = await readFile(destination, "utf8");
+        for (const [, local] of source.matchAll(/require\("\.\/([^"]+)"\)/g)) {
+          queue.push(local.endsWith(".js") ? local : `${local}.js`);
+        }
       }
-    }
-    await writeJson(path.join(dir, "source.json"), {
-      sha: commit.sha,
-      committedAt: commit.commit.committer.date,
-      files: [...seen],
-    });
-    return `${commit.sha.slice(0, 7)} (${seen.size} files)`;
-  });
+      await writeJson(path.join(dir, "source.json"), {
+        sha: commit.sha,
+        committedAt: commit.commit.committer.date,
+        files: [...seen],
+      });
+      return `${commit.sha.slice(0, 7)} (${seen.size} files)`;
+    },
+  );
 }
 
 // What each venue asked of the LLM on the latest transform run. The monthly log
@@ -344,7 +390,10 @@ async function fetchLlmVenueUsage() {
     const wanted = [
       { artifact: report, into: path.join(dir, "report") },
       ...artifacts
-        .filter((artifact) => artifact.name.startsWith("llm_usage_") && !artifact.expired)
+        .filter(
+          (artifact) =>
+            artifact.name.startsWith("llm_usage_") && !artifact.expired,
+        )
         .map((artifact) => ({ artifact, into: path.join(dir, "venues") })),
     ];
     await mapWithConcurrency(wanted, 6, async ({ artifact, into }) => {
@@ -359,7 +408,9 @@ async function fetchLlmVenueUsage() {
       await rm(zip);
     });
 
-    const summary = await readJson(path.join(dir, "report", "llm-usage-report.json"));
+    const summary = await readJson(
+      path.join(dir, "report", "llm-usage-report.json"),
+    );
     const venues = {};
     for (const venue of (await readdir(path.join(dir, "venues"))).sort()) {
       venues[venue] = await readJson(path.join(dir, "venues", venue));
@@ -399,7 +450,9 @@ function timingsFor(run, jobs) {
   );
   if (!ran.length) return { queuedMs: null, executionMs: null };
 
-  const startedAt = Math.min(...ran.map((job) => new Date(job.started_at).getTime()));
+  const startedAt = Math.min(
+    ...ran.map((job) => new Date(job.started_at).getTime()),
+  );
   const completedAt = Math.max(
     ...ran.map((job) => new Date(job.completed_at).getTime()),
   );
@@ -428,12 +481,15 @@ function didNothing(jobs, guardJob) {
 async function mapWithConcurrency(items, limit, worker) {
   const results = new Array(items.length);
   let cursor = 0;
-  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (cursor < items.length) {
-      const index = cursor++;
-      results[index] = await worker(items[index], index);
-    }
-  });
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (cursor < items.length) {
+        const index = cursor++;
+        results[index] = await worker(items[index], index);
+      }
+    },
+  );
   await Promise.all(runners);
   return results;
 }
@@ -468,60 +524,67 @@ async function fetchWorkflowRuns() {
   const empty = [];
 
   for (const target of WORKFLOWS) {
-    await step(`${target.name} runs`, path.join(OUT, "runs", `${target.key}.json`), async () => {
-      const runs = await listWorkflowRuns(target.repo, target.workflow, {
-        since: sinceIso,
-      });
-      // The window is already applied server-side; re-checking it here means a
-      // filter that was ignored, or honoured against a stale index, cannot
-      // quietly widen what gets reported. The same call
-      // data-analysed/scripts/workflow-run-stats.js makes, for the same reason.
-      const inWindow = runs
-        .filter((run) => new Date(run.run_started_at ?? run.created_at).getTime() >= since)
-        .map((run) => ({
-          id: run.id,
-          attempt: run.run_attempt,
-          conclusion: run.conclusion,
-          event: run.event,
-          startedAt: run.run_started_at ?? run.created_at,
-          updatedAt: run.updated_at,
-          url: run.html_url,
-          displayTitle: run.display_title,
-        }));
+    await step(
+      `${target.name} runs`,
+      path.join(OUT, "runs", `${target.key}.json`),
+      async () => {
+        const runs = await listWorkflowRuns(target.repo, target.workflow, {
+          since: sinceIso,
+        });
+        // The window is already applied server-side; re-checking it here means a
+        // filter that was ignored, or honoured against a stale index, cannot
+        // quietly widen what gets reported. The same call
+        // data-analysed/scripts/workflow-run-stats.js makes, for the same reason.
+        const inWindow = runs
+          .filter(
+            (run) =>
+              new Date(run.run_started_at ?? run.created_at).getTime() >= since,
+          )
+          .map((run) => ({
+            id: run.id,
+            attempt: run.run_attempt,
+            conclusion: run.conclusion,
+            event: run.event,
+            startedAt: run.run_started_at ?? run.created_at,
+            updatedAt: run.updated_at,
+            url: run.html_url,
+            displayTitle: run.display_title,
+          }));
 
-      let skipped = 0;
-      await mapWithConcurrency(inWindow, 6, async (run) => {
-        const key = `${run.id}-${run.attempt}`;
-        let timings = timingsCache[key];
-        if (!timings) {
-          const jobs = await listRunJobs(target.repo, run.id);
-          timings = timingsFor(run, jobs);
-          if (target.guardJob && run.conclusion === "success") {
-            timings.didNothing = didNothing(jobs, target.guardJob);
+        let skipped = 0;
+        await mapWithConcurrency(inWindow, 6, async (run) => {
+          const key = `${run.id}-${run.attempt}`;
+          let timings = timingsCache[key];
+          if (!timings) {
+            const jobs = await listRunJobs(target.repo, run.id);
+            timings = timingsFor(run, jobs);
+            if (target.guardJob && run.conclusion === "success") {
+              timings.didNothing = didNothing(jobs, target.guardJob);
+            }
+            // Only a finished attempt's jobs are final.
+            if (run.conclusion) fetched[key] = timings;
+            lookups += 1;
           }
-          // Only a finished attempt's jobs are final.
-          if (run.conclusion) fetched[key] = timings;
-          lookups += 1;
-        }
-        seen[key] = timings;
-        Object.assign(run, timings);
-        if (run.didNothing) skipped += 1;
-      });
+          seen[key] = timings;
+          Object.assign(run, timings);
+          if (run.didNothing) skipped += 1;
+        });
 
-      await writeJson(path.join(OUT, "runs", `${target.key}.json`), inWindow);
-      collected[target.key] = inWindow.length;
+        await writeJson(path.join(OUT, "runs", `${target.key}.json`), inWindow);
+        collected[target.key] = inWindow.length;
 
-      // Every flow here runs at least daily, so an empty window is the run
-      // history failing to come back rather than a flow that stopped. It is
-      // carried through to the report as "no data" instead of as a zero,
-      // because a zero renders as 0% succeeded - a flow that reported nothing
-      // reading as a flow that failed everything.
-      if (!inWindow.length) empty.push(target.name);
+        // Every flow here runs at least daily, so an empty window is the run
+        // history failing to come back rather than a flow that stopped. It is
+        // carried through to the report as "no data" instead of as a zero,
+        // because a zero renders as 0% succeeded - a flow that reported nothing
+        // reading as a flow that failed everything.
+        if (!inWindow.length) empty.push(target.name);
 
-      return `${inWindow.length} in ${RUN_WINDOW_DAYS}d${skipped ? ` (${skipped} did nothing)` : ""}${
-        inWindow.length ? "" : " — nothing came back, reporting as no data"
-      }`;
-    });
+        return `${inWindow.length} in ${RUN_WINDOW_DAYS}d${skipped ? ` (${skipped} did nothing)` : ""}${
+          inWindow.length ? "" : " — nothing came back, reporting as no data"
+        }`;
+      },
+    );
   }
 
   if (empty.length) {
@@ -534,10 +597,14 @@ async function fetchWorkflowRuns() {
     await writeJson(
       TIMINGS_CACHE,
       Object.fromEntries(
-        Object.entries(seen).filter(([key]) => timingsCache[key] || fetched[key]),
+        Object.entries(seen).filter(
+          ([key]) => timingsCache[key] || fetched[key],
+        ),
       ),
     );
-    console.log(`  ${lookups} job lookups, ${Object.keys(seen).length - lookups} from cache`);
+    console.log(
+      `  ${lookups} job lookups, ${Object.keys(seen).length - lookups} from cache`,
+    );
   }
 
   await writeJson(path.join(OUT, "runs", "meta.json"), {

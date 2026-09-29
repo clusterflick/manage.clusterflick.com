@@ -40,7 +40,8 @@ export default function buildNormaliserReport({
   venues,
   source,
 }) {
-  const normalise = (title) => withoutYear(normalizeTitle(title, { retainYear: true }));
+  const normalise = (title) =>
+    withoutYear(normalizeTitle(title, { retainYear: true }));
 
   let checked = 0;
   const mismatched = [];
@@ -54,7 +55,11 @@ export default function buildNormaliserReport({
       const tmdbTitle = normalizeTitle(listing.themoviedb.title);
       const movie = combined.movies[String(listing.themoviedb.id)];
       if (venueTitle === tmdbTitle) continue;
-      if (movie?.originalTitle && normalizeTitle(movie.originalTitle) === venueTitle) continue;
+      if (
+        movie?.originalTitle &&
+        normalizeTitle(movie.originalTitle) === venueTitle
+      )
+        continue;
       mismatched.push({ venueId, listing, venueTitle, tmdbTitle, movie });
     }
   }
@@ -90,7 +95,10 @@ export default function buildNormaliserReport({
         url: movie ? movieUrl(movie) : null,
       };
     })
-    .sort((a, b) => b.listings - a.listings || a.venueTitle.localeCompare(b.venueTitle));
+    .sort(
+      (a, b) =>
+        b.listings - a.listings || a.venueTitle.localeCompare(b.venueTitle),
+    );
 
   return {
     source,

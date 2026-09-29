@@ -27,7 +27,9 @@ export default function MovieTable({
             {movie.title}
           </a>
           {movie.year && <span className={styles.year}>{movie.year}</span>}
-          <div className={styles.categories}>{movie.categories.join(" · ")}</div>
+          <div className={styles.categories}>
+            {movie.categories.join(" · ")}
+          </div>
         </div>
       ),
     },
@@ -58,7 +60,8 @@ export default function MovieTable({
             width: "140px",
             // Past-only titles sort last under either direction, so a descending
             // click doesn't fill the top of the table with history.
-            sortValue: (movie: MovieSummary) => movie.nextPerformance ?? Infinity,
+            sortValue: (movie: MovieSummary) =>
+              movie.nextPerformance ?? Infinity,
             render: (movie: MovieSummary) =>
               movie.nextPerformance ? (
                 dateTimeLabel(movie.nextPerformance)

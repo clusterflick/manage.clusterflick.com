@@ -1,8 +1,10 @@
 // Small numeric helpers shared by the report builders.
 
-export const sum = (values) => values.reduce((total, value) => total + value, 0);
+export const sum = (values) =>
+  values.reduce((total, value) => total + value, 0);
 
-export const mean = (values) => (values.length ? sum(values) / values.length : 0);
+export const mean = (values) =>
+  values.length ? sum(values) / values.length : 0;
 
 // Nearest-rank, so every value returned is one that actually occurred. An
 // interpolated p90 over a dozen runs would invent a duration no run took.
