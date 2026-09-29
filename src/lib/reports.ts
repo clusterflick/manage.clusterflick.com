@@ -112,12 +112,15 @@ export type PresenceFlapGroup = {
     dropouts: number;
     missedRuns: number;
     lastReturnAt: string | null;
+    // Still in the latest release with a performance to come.
+    live: boolean;
   }[];
   // Per release: how many of these listings were missing, and how many
   // listings the venue carried in all.
   missing: number[];
   venueListings: number[];
   dropouts: number;
+  liveListings: number;
   lastReturnAt: string | null;
 };
 
@@ -183,7 +186,7 @@ export type CatalogueReport = {
     releases: FlappingRelease[];
     listingsSeen: number;
     match: { listings: number; groups: MatchFlapGroup[] };
-    presence: { listings: number; groups: PresenceFlapGroup[] };
+    presence: { listings: number; liveListings: number; groups: PresenceFlapGroup[] };
   };
 };
 

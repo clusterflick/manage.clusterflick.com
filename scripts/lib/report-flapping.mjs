@@ -21,6 +21,13 @@
 // every venue listing the same title at once - three Curzons are one row, not
 // three. Presence flaps are grouped by venue, because a drop-out is usually
 // the venue's retrieval coming back short.
+//
+// A listing that has finished - gone from the latest release, or with nothing
+// left to show in it - is treated differently by each. Its match flaps are
+// dropped: nobody sees it flip any more, and if the matcher is still undecided
+// on the title, the listings still showing keep the row. Its presence flaps
+// are kept, since the film finishing says nothing about the venue's retrieval
+// being fixed, but counted apart from the listings still live.
 
 import { groupBy } from "./stats.mjs";
 import { movieUrl, venueUrl } from "./clusterflick-urls.mjs";
@@ -109,14 +116,25 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
   const venueIdOf = (showingId) =>
     history.findLast((run) => run.showings[showingId]).showings[showingId].venueId;
 
+  // Still live: in the latest release, with a performance still ahead of it
+  // when that release was published.
+  const newest = history.at(-1);
+  const newestAt = Date.parse(newest.publishedAt);
+  const isLive = (showingId) => {
+    const showing = newest.showings[showingId];
+    if (!showing) return false;
+    return showing.lastPerformance === null || showing.lastPerformance >= newestAt;
+  };
+
   const matchFlaps = [];
   const presenceFlaps = [];
   for (const showingId of showingIds) {
     const timeline = timelineOf(showingId, history);
     const venue = venueOf(venueIdOf(showingId), venues);
+    const live = isLive(showingId);
 
     const match = matchFlapsOf(timeline, history);
-    if (match.returns > 0) {
+    if (match.returns > 0 && live) {
       matchFlaps.push({ id: showingId, venue, timeline, ...match });
     }
 
@@ -130,6 +148,7 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
         missedRuns: presence.missedRuns,
         lastReturnAt: presence.lastReturnAt,
         movieId: timeline[presence.last],
+        live,
       });
     }
   }
@@ -186,13 +205,14 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
   const presenceGroups = [...groupBy(presenceFlaps, (flap) => flap.venue.id)].map(
     ([venueId, flaps]) => {
       const listings = flaps
-        .map(({ id, timeline, dropouts, missedRuns, lastReturnAt, movieId }) => ({
+        .map(({ id, timeline, dropouts, missedRuns, lastReturnAt, movieId, live }) => ({
           id,
           film: filmOf(movieId, history, latestMovies),
           timeline,
           dropouts,
           missedRuns,
           lastReturnAt,
+          live,
         }))
         // In the order they went missing, so listings that dropped together
         // sit together.
@@ -216,6 +236,7 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
         ),
         venueListings: listingsAt(venueId),
         dropouts: listings.reduce((total, listing) => total + listing.dropouts, 0),
+        liveListings: listings.filter((listing) => listing.live).length,
         lastReturnAt: latest(listings.map((listing) => listing.lastReturnAt)),
       };
     },
@@ -232,6 +253,7 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
     },
     presence: {
       listings: presenceFlaps.length,
+      liveListings: presenceFlaps.filter((flap) => flap.live).length,
       groups: presenceGroups.sort(byRecent("lastReturnAt")),
     },
   };
