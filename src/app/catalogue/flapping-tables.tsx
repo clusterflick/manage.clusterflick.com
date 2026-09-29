@@ -195,6 +195,14 @@ export function PresenceFlapTable({
       ),
     },
     {
+      key: "liveListings",
+      header: "Still live",
+      align: "right",
+      width: "90px",
+      sortValue: (group) => group.liveListings,
+      render: (group) => count(group.liveListings),
+    },
+    {
       key: "dropouts",
       header: "Drop-outs",
       align: "right",
@@ -233,6 +241,7 @@ export function PresenceFlapTable({
                 <FilmTitle film={listing.film} />
                 {!listing.film.matched && <span className={styles.year}>unmatched</span>}
                 <span className={`${styles.categories} mono`}> {listing.id}</span>
+                {!listing.live && <span className={styles.year}>ended</span>}
               </span>
               <PresenceTimeline timeline={listing.timeline} releases={releases} />
               <span className={styles.muted}>

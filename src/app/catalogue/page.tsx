@@ -145,7 +145,10 @@ export default function CataloguePage() {
             out of a match counts too, drawn hollow. Grouped by the films
             involved, since one title usually flaps at every venue listing it
             at once; the timeline is the listing that switched most, and the
-            rest are under the toggle. Hover a cell for its release.
+            rest are under the toggle. Only listings still in the latest
+            release with performances to come are counted — one that has
+            finished is not flipping on the site any more. Hover a cell for
+            its release.
           </>
         }
         flush
@@ -155,7 +158,7 @@ export default function CataloguePage() {
 
       <Panel
         id="flapping-presence"
-        title={`${count(flapping.presence.listings)} listings dropping out and coming back, at ${count(flapping.presence.groups.length)} venues`}
+        title={`${count(flapping.presence.listings)} listings dropping out and coming back, at ${count(flapping.presence.groups.length)} venues (${count(flapping.presence.liveListings)} still live)`}
         note={
           <>
             Venue listings missing from a release between two they were in,
@@ -167,7 +170,10 @@ export default function CataloguePage() {
             short: each cell counts how many of its listings went missing in
             that release, so several films lost in one run stand out from one
             film lost over several. The films affected are under the toggle,
-            each marked × where it went missing.
+            each marked × where it went missing. Listings that have since
+            finished are kept, since the venue’s retrieval is no more fixed for
+            the film ending, but marked ended and left out of the still-live
+            count.
           </>
         }
         flush
