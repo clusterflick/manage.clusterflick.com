@@ -51,6 +51,11 @@ const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
 const FLAP_RELEASES = Number(process.env.FLAP_RELEASES || 30);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
+// How long to wait before asking again for a flow's runs when the first answer
+// held none - see `fetchWorkflowRuns`.
+const EMPTY_RETRY_MS = 5000;
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const unzip = promisify(execFile).bind(null, "unzip");
 
@@ -517,9 +522,7 @@ async function fetchWorkflowRuns() {
   const fetched = {};
   let lookups = 0;
   const since = Date.now() - RUN_WINDOW_DAYS * 86400000;
-  // Sent to GitHub as the `created` filter rather than applied only here - see
-  // `listWorkflowRuns`. Seconds precision: the API rejects the fractional form.
-  const sinceIso = new Date(since).toISOString().replace(/\.\d+Z$/, "Z");
+  const sinceIso = new Date(since).toISOString();
   const collected = {};
   const empty = [];
 
@@ -528,28 +531,41 @@ async function fetchWorkflowRuns() {
       `${target.name} runs`,
       path.join(OUT, "runs", `${target.key}.json`),
       async () => {
-        const runs = await listWorkflowRuns(target.repo, target.workflow, {
-          since: sinceIso,
-        });
-        // The window is already applied server-side; re-checking it here means a
-        // filter that was ignored, or honoured against a stale index, cannot
-        // quietly widen what gets reported. The same call
-        // data-analysed/scripts/workflow-run-stats.js makes, for the same reason.
-        const inWindow = runs
-          .filter(
-            (run) =>
-              new Date(run.run_started_at ?? run.created_at).getTime() >= since,
+        // `listWorkflowRuns` reads a margin past the window, by creation; the
+        // window itself is measured on `run_started_at`, so it is applied here.
+        const readWindow = async () =>
+          (
+            await listWorkflowRuns(target.repo, target.workflow, {
+              since: sinceIso,
+            })
           )
-          .map((run) => ({
-            id: run.id,
-            attempt: run.run_attempt,
-            conclusion: run.conclusion,
-            event: run.event,
-            startedAt: run.run_started_at ?? run.created_at,
-            updatedAt: run.updated_at,
-            url: run.html_url,
-            displayTitle: run.display_title,
-          }));
+            .filter(
+              (run) =>
+                new Date(run.run_started_at ?? run.created_at).getTime() >=
+                since,
+            )
+            .map((run) => ({
+              id: run.id,
+              attempt: run.run_attempt,
+              conclusion: run.conclusion,
+              event: run.event,
+              startedAt: run.run_started_at ?? run.created_at,
+              updatedAt: run.updated_at,
+              url: run.html_url,
+              displayTitle: run.display_title,
+            }));
+
+        // Every flow here runs at least daily, so an empty window is GitHub
+        // failing to answer rather than a flow that stopped - see
+        // `listWorkflowRuns`. Asked once more after a pause before it is
+        // believed; a second empty answer is reported as no data below.
+        let inWindow = await readWindow();
+        let retried = false;
+        if (!inWindow.length) {
+          retried = true;
+          await sleep(EMPTY_RETRY_MS);
+          inWindow = await readWindow();
+        }
 
         let skipped = 0;
         await mapWithConcurrency(inWindow, 6, async (run) => {
@@ -581,8 +597,8 @@ async function fetchWorkflowRuns() {
         if (!inWindow.length) empty.push(target.name);
 
         return `${inWindow.length} in ${RUN_WINDOW_DAYS}d${skipped ? ` (${skipped} did nothing)` : ""}${
-          inWindow.length ? "" : " — nothing came back, reporting as no data"
-        }`;
+          retried ? " after an empty first answer" : ""
+        }${inWindow.length ? "" : " — nothing came back, reporting as no data"}`;
       },
     );
   }
