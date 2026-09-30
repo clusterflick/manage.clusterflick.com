@@ -38,7 +38,7 @@ const ATTEMPTS = 4;
 // pagination loop that could otherwise be steered by a bad `total_count`.
 const MAX_RUN_PAGES = 20;
 
-// How far before the reported window to ask the server for runs. See
+// How far before the reported window to keep reading runs back. See
 // `listWorkflowRuns` - it covers re-runs whose original creation predates the
 // window while the attempt that matters falls inside it.
 const WINDOW_MARGIN_MS = 30 * 86400000;
@@ -138,40 +138,42 @@ export async function downloadFile(
 
 // Runs inside the window, completed ones only.
 //
-// The window is applied by the server through `created` rather than by pulling
-// the newest 100 runs and filtering them here. Not just tidier: a workflow
-// busier than a hundred runs a window - clusterflick.com is - was being
-// silently truncated at whatever the first page happened to hold.
-//
-// `status=completed` is deliberately NOT sent, and status is filtered below
-// instead. GitHub answers a status-filtered query out of the Actions search
-// index, and when that index is behind it serves the stale contents as though
-// they were current: a full page of runs, correctly ordered, 200 OK, with a
-// `total_count` that agrees with the body, and nothing anywhere saying the
-// answer is months old. Measured on data-retrieved/retrieve.yml, 40 calls per
-// query shape, rotated so none held a fixed position:
+// Read from the unfiltered run list, newest first, paging back until a page
+// reaches past the window. No query filter at all - not `status`, not
+// `created`. GitHub answers a filtered query out of the Actions search index,
+// and when that index is behind it serves the stale contents as though they
+// were current: 200 OK, a `total_count` that agrees with the body, and nothing
+// anywhere saying the answer is wrong. Measured on data-retrieved/retrieve.yml,
+// 40 calls per query shape, rotated so none held a fixed position:
 //
 //   status=completed   5 of 40 stale   (worst: newest run seven months back)
 //   created=>=since    0 of 40
 //   no filter at all   0 of 40
 //
-// Every stale answer held no run inside the window at all, which is how this
-// site came to publish "Retrieve: 0 runs, 0% succeeded" for a flow that had run
-// 68 times. GitHub's own account of it is that filtered searches read that
-// index while unfiltered ones do not - see
-// https://github.com/orgs/community/discussions/24626.
+// `status=completed` was dropped for that, which is how this site came to
+// publish "Retrieve: 0 runs, 0% succeeded" for a flow that had run 68 times.
+// `created` then did the same thing to Combine: on 30 September one build got
+// an empty page back for data-combined/combine.yml while the release that run
+// had published was sitting in the same build's download. GitHub's own account
+// is that filtered searches read that index while unfiltered ones do not - see
+// https://github.com/orgs/community/discussions/24626. Unfiltered costs a page
+// or two more per workflow, which is cheap next to publishing a wrong answer.
 //
-// `since` is widened before it is sent, and the caller's exact window is
-// applied to `run_started_at` afterwards. The two are not the same field:
-// `created` matches `created_at`, which stays at the moment a run was first
-// created, while this site measures the window against `run_started_at`, which
-// GitHub rewrites to the latest attempt when a run is re-run. A run created
-// just before the cutoff and re-run just after it sits inside the window by the
-// field we report on and outside it by the field the server filters on - so
-// asking the server for exactly the window silently drops it. Seen on
-// data-retrieved run 32065589286: created 20:24, re-run at 22:02, cutoff 21:10.
-// Only ever re-runs, which are exactly the `attempt > 1` runs the unassisted
-// figure is built from, so the bias is not neutral.
+// Nor is the list paged to `total_count` alone: the window is the stop. The
+// list is ordered by creation, newest first, so the first page whose oldest
+// run was created before the floor is the last one needed.
+//
+// The floor sits a whole window further back than `since`, and the caller's
+// exact window is applied to `run_started_at` afterwards. The two are not the
+// same field: `created_at` stays at the moment a run was first created, while
+// this site measures the window against `run_started_at`, which GitHub rewrites
+// to the latest attempt when a run is re-run. A run created just before the
+// cutoff and re-run just after it sits inside the window by the field we
+// report on and outside it by the field the list is ordered on - so stopping at
+// exactly the window silently drops it. Seen on data-retrieved run
+// 32065589286: created 20:24, re-run at 22:02, cutoff 21:10. Only ever re-runs,
+// which are exactly the `attempt > 1` runs the unassisted figure is built from,
+// so the bias is not neutral.
 //
 // A run still in progress has no conclusion and no duration, so counting one
 // would either read as a failure or skew the average depending on which field
@@ -184,13 +186,9 @@ export async function listWorkflowRuns(
   // Doubling the window is the cheap end of the trade: a re-run triggered more
   // than a window after its original creation is dropped, which has not been
   // seen, and the cost is a page or two more per workflow. There is no exact
-  // answer short of reading every run a workflow has ever had, because the API
-  // can only bound on the field it orders by.
-  const floor = since
-    ? new Date(Date.parse(since) - WINDOW_MARGIN_MS)
-        .toISOString()
-        .replace(/\.\d+Z$/, "Z")
-    : undefined;
+  // answer short of reading every run a workflow has ever had, because the list
+  // is only ordered by creation.
+  const floor = since ? Date.parse(since) - WINDOW_MARGIN_MS : undefined;
   const collected = [];
 
   // Bounded rather than `while (true)`. A `total_count` that disagrees with the
@@ -201,7 +199,6 @@ export async function listWorkflowRuns(
       per_page: String(perPage),
       page: String(page),
       exclude_pull_requests: "true",
-      ...(floor ? { created: `>=${floor}` } : {}),
     });
     const body = await api(
       `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/runs?${query}`,
@@ -209,9 +206,12 @@ export async function listWorkflowRuns(
     );
 
     const batch = body.workflow_runs || [];
-    collected.push(...batch);
+    collected.push(
+      ...batch.filter((run) => !floor || Date.parse(run.created_at) >= floor),
+    );
     if (!batch.length) break;
-    if (collected.length >= (body.total_count ?? collected.length)) break;
+    if (floor && batch.some((run) => Date.parse(run.created_at) < floor)) break;
+    if (page * perPage >= (body.total_count ?? 0)) break;
   }
 
   return collected.filter((run) => run.status === "completed");

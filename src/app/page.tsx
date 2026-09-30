@@ -159,11 +159,24 @@ export default function OverviewPage() {
                       {workflow.name}
                     </Link>
                   </td>
-                  <td className={styles.right}>{count(workflow.runs)}</td>
+                  {/* No runs collected is GitHub failing to answer, not a
+                      flow that did nothing - see the pipeline page. */}
                   <td className={styles.right}>
-                    <StatusPill severity={rateStatus(workflow.successRate)}>
-                      {percent(workflow.successRate)}
-                    </StatusPill>
+                    {workflow.runs === 0 ? "—" : count(workflow.runs)}
+                  </td>
+                  <td className={styles.right}>
+                    {workflow.successRate === null ? (
+                      <span
+                        className={styles.na}
+                        title="No run history came back from GitHub for this build"
+                      >
+                        —
+                      </span>
+                    ) : (
+                      <StatusPill severity={rateStatus(workflow.successRate)}>
+                        {percent(workflow.successRate)}
+                      </StatusPill>
+                    )}
                   </td>
                   <td className={styles.right}>
                     {workflow.reportsUnassisted &&
