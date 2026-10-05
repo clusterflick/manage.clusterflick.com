@@ -28,9 +28,18 @@
 // on the title, the listings still showing keep the row. Its presence flaps
 // are kept, since the film finishing says nothing about the venue's retrieval
 // being fixed, but counted apart from the listings still live.
+//
+// A match flap that has since settled is dropped too: once a listing has sat
+// under the same film for the last SETTLED_RUNS releases, the fix - a title
+// corrected, a matcher change - has held long enough to trust. If it flips
+// again it comes straight back, with its whole history in the timeline.
 
 import { groupBy } from "./stats.mjs";
 import { movieUrl, venueUrl } from "./clusterflick-urls.mjs";
+
+// How many releases a listing has to hold the same film before its match
+// flaps stop being shown - about five days of combine runs.
+const SETTLED_RUNS = 10;
 
 // Everything the pages need to know about a film a listing sat under. Linked
 // only when it is still in the latest release - an older id's page is gone.
@@ -58,12 +67,14 @@ function matchFlapsOf(timeline, history) {
   let switches = 0;
   let returns = 0;
   let lastReturnAt = null;
+  let lastSwitch = null;
   const held = new Set();
   let previous = null;
   timeline.forEach((movieId, index) => {
     if (movieId === null) return;
     if (previous !== null && movieId !== previous) {
       switches += 1;
+      lastSwitch = index;
       if (held.has(movieId)) {
         returns += 1;
         lastReturnAt = history[index].publishedAt;
@@ -72,7 +83,9 @@ function matchFlapsOf(timeline, history) {
     held.add(movieId);
     previous = movieId;
   });
-  return { switches, returns, lastReturnAt };
+  const settled =
+    lastSwitch === null || timeline.length - lastSwitch >= SETTLED_RUNS;
+  return { switches, returns, lastReturnAt, settled };
 }
 
 // A listing flaps in and out when it is missing from a run between two it was
@@ -137,15 +150,17 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
   };
 
   const matchFlaps = [];
+  let settledMatchFlaps = 0;
   const presenceFlaps = [];
   for (const showingId of showingIds) {
     const timeline = timelineOf(showingId, history);
     const venue = venueOf(venueIdOf(showingId), venues);
     const live = isLive(showingId);
 
-    const match = matchFlapsOf(timeline, history);
+    const { settled, ...match } = matchFlapsOf(timeline, history);
     if (match.returns > 0 && live) {
-      matchFlaps.push({ id: showingId, venue, timeline, ...match });
+      if (settled) settledMatchFlaps += 1;
+      else matchFlaps.push({ id: showingId, venue, timeline, ...match });
     }
 
     const presence = presenceFlapsOf(showingId, timeline, history);
@@ -282,6 +297,8 @@ export default function buildFlappingReport({ history, venues, latestMovies }) {
     listingsSeen: showingIds.size,
     match: {
       listings: matchFlaps.length,
+      settled: settledMatchFlaps,
+      settledRuns: SETTLED_RUNS,
       groups: matchGroups.sort(byRecent("lastFlipAt")),
     },
     presence: {

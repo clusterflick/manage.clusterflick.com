@@ -151,7 +151,11 @@ export default function CataloguePage() {
             timeline is the listing that switched most, and the rest are under
             the toggle. Only listings still in the latest release with
             performances to come are counted — one that has finished is not
-            flipping on the site any more. Hover a cell for its release.
+            flipping on the site any more, and nor is one that has held the same
+            film for the last {count(flapping.match.settledRuns)} releases (
+            {count(flapping.match.settled)} hidden as settled) — it shows up
+            again, full history and all, if it flips back. Hover a cell for its
+            release.
           </>
         }
         flush

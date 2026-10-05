@@ -142,7 +142,7 @@ async function main() {
     latestMovies: combined.movies,
   });
   console.log(
-    `· flapping — over ${history.length} releases, ${catalogue.flapping.match.listings} listings flapped between matches and ${catalogue.flapping.presence.listings} in and out`,
+    `· flapping — over ${history.length} releases, ${catalogue.flapping.match.listings} listings flapped between matches (${catalogue.flapping.match.settled} more since settled) and ${catalogue.flapping.presence.listings} in and out`,
   );
 
   const llm = buildLlmReport(
