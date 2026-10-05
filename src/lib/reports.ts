@@ -196,7 +196,12 @@ export type CatalogueReport = {
   flapping: {
     releases: FlappingRelease[];
     listingsSeen: number;
-    match: { listings: number; groups: MatchFlapGroup[] };
+    match: {
+      listings: number;
+      settled: number;
+      settledRuns: number;
+      groups: MatchFlapGroup[];
+    };
     presence: {
       listings: number;
       liveListings: number;
