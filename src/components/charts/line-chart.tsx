@@ -87,6 +87,15 @@ export default function LineChart({
         return {
           ...entry,
           line: linePath(points, built),
+          // A value with a gap on both sides has no neighbour to draw a line
+          // to, so the path above leaves it invisible - a day that follows a
+          // missing one vanishes. Those get a dot of their own.
+          isolated: points.filter(
+            (point, index) =>
+              point.y !== null &&
+              (entry.values[index - 1] ?? null) === null &&
+              (entry.values[index + 1] ?? null) === null,
+          ),
           area: entry.area
             ? areaPath(points, built, Math.max(domain[0], 0))
             : null,
@@ -195,6 +204,15 @@ export default function LineChart({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
+              {entry.isolated.map((point) => (
+                <circle
+                  key={point.x}
+                  cx={scale.x(point.x)}
+                  cy={scale.y(point.y!)}
+                  r={3}
+                  fill={slotVar(entry)}
+                />
+              ))}
             </g>
           ))}
         </g>
