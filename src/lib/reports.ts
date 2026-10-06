@@ -224,6 +224,8 @@ export type LlmDay = {
   candidatesTokens: number;
   estimatedCostUsd: number;
   unpriced: boolean;
+  // A run that day had a transform group fail, so the figures are a floor.
+  partial: boolean;
 };
 
 export type LlmCallSite = {
@@ -317,6 +319,8 @@ export type LlmReport = {
     venuesWithLlmUsage: number;
     venueCount: number;
     byProvider: LlmProviderUsage[];
+    // The transform groups that didn't finish; empty on a complete run.
+    failedGroups: string[];
   }[];
 };
 

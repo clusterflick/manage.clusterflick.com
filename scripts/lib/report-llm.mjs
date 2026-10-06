@@ -40,6 +40,10 @@ function dayTotals(rows) {
     // gap: when a call used a model with no listed price, the cost above is an
     // undercount by whatever those calls cost.
     unpriced: rows.some((row) => row.modelsWithoutPricing),
+    // Likewise for a run where a transform group failed: it holds the venues
+    // that finished before the failure, so the day's cost is a floor rather
+    // than the whole of it.
+    partial: rows.some((row) => row.failedGroups?.length),
   };
 }
 
@@ -319,6 +323,9 @@ export default function buildLlmReport(allRows, venueUsage) {
       venuesWithLlmUsage: row.venuesWithLlmUsage,
       venueCount: row.venueCount,
       byProvider: runByProvider(row),
+      // The transform groups that didn't finish, named by data-transformed.
+      // Empty on a complete run, and on rows logged before it said.
+      failedGroups: row.failedGroups ?? [],
     })),
   };
 }

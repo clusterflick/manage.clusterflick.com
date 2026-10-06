@@ -46,6 +46,10 @@ export default function LlmUsagePage() {
     (run) => run.date === llm.latest.day.date,
   );
 
+  // Runs where a transform group failed. Their usage covers the venues that
+  // finished before the failure, so the cost they add to a day is a floor.
+  const partialRuns = llm.runs.filter((run) => run.failedGroups.length > 0);
+
   const stacked = llm.callSites.map((site) => ({
     key: site.name,
     label: site.name,
@@ -88,7 +92,7 @@ export default function LlmUsagePage() {
         <StatTile
           label={`Spend on ${llm.latest.day.date}`}
           value={money(llm.latest.day.estimatedCostUsd)}
-          detail={`${llm.latest.day.runs} ${llm.latest.day.runs === 1 ? "run" : "runs"} · ${count(llm.latest.day.calls)} calls`}
+          detail={`${llm.latest.day.runs} ${llm.latest.day.runs === 1 ? "run" : "runs"} · ${count(llm.latest.day.calls)} calls${llm.latest.day.partial ? " · includes a partial run, so a floor" : ""}`}
         />
         <StatTile
           label="Mean per day"
@@ -174,6 +178,57 @@ export default function LlmUsagePage() {
           markers={callSiteMarkers}
         />
       </Panel>
+
+      {partialRuns.length > 0 && (
+        <Panel
+          title="Partial runs"
+          note="Transform runs where a group of venues failed. Each group's usage is kept up to its failure, so these runs are in every figure above, but the venue that failed and any after it in its group aren't — the cost they add to their day is a floor, not the whole of it."
+          flush
+        >
+          <div className={styles.scroll}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Run</th>
+                  <th>Groups that didn&apos;t finish</th>
+                  <th className={styles.right}>Calls</th>
+                  <th className={styles.right}>Cost</th>
+                  <th className={styles.right}>Venues on LLM</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partialRuns.map((run) => (
+                  <tr key={run.runId}>
+                    <td className={styles.strong}>
+                      <a
+                        href={`https://github.com/clusterflick/data-transformed/actions/runs/${run.runId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {run.at
+                          ? dateTimeLabel(run.at)
+                          : dateLabel(`${run.date}T12:00:00Z`)}
+                      </a>
+                    </td>
+                    <td className="mono">
+                      {run.failedGroups
+                        .map((group) => group.replace(/^transform_/, ""))
+                        .join(", ")}
+                    </td>
+                    <td className={styles.right}>{count(run.calls)}</td>
+                    <td className={styles.right}>
+                      {money(run.estimatedCostUsd)}
+                    </td>
+                    <td className={styles.right}>
+                      {count(run.venuesWithLlmUsage)} of {count(run.venueCount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+      )}
 
       <Panel
         title="Call sites over the window"
