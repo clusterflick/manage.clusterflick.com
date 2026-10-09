@@ -77,6 +77,14 @@ export default function RunsTable({
                     {index === 0 && (
                       <span className={styles.tag}>cold cache</span>
                     )}
+                    {run.failedGroups.length > 0 && (
+                      <span
+                        className={styles.tag}
+                        title={`Groups that didn't finish: ${run.failedGroups.join(", ")}`}
+                      >
+                        partial
+                      </span>
+                    )}
                   </td>
                   <td className={styles.right}>{count(run.calls)}</td>
                   <td className={styles.right}>
