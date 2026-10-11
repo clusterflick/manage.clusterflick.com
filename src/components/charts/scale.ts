@@ -19,7 +19,7 @@ export type Scale = {
 // 3% change look like a collapse.
 export function niceDomain(
   values: number[],
-  { includeZero = true } = {},
+  { includeZero = true, stepFor = niceStep } = {},
 ): [number, number] {
   const finite = values.filter((value) => Number.isFinite(value));
   if (!finite.length) return [0, 1];
@@ -35,7 +35,7 @@ export function niceDomain(
     const padding = Math.abs(max) || 1;
     return [min - padding * 0.5, max + padding * 0.5];
   }
-  const step = niceStep((max - min) / 4);
+  const step = stepFor((max - min) / 4);
   return [Math.floor(min / step) * step, Math.ceil(max / step) * step];
 }
 
@@ -52,8 +52,28 @@ export function niceStep(rough: number): number {
   return 10 * magnitude;
 }
 
-export function ticksFor([min, max]: [number, number], count = 4): number[] {
-  const step = niceStep((max - min) / count);
+// Steps a reader recognises on a clock, in milliseconds. Decimal steps land
+// a duration axis on 16.7 minutes, because a power of ten of milliseconds
+// isn't a round number of anything.
+const DURATION_STEPS = [
+  1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600,
+  43200, 86400,
+].map((seconds) => seconds * 1000);
+
+export function durationStep(rough: number): number {
+  if (!Number.isFinite(rough) || rough <= 0) return 1000;
+  return (
+    DURATION_STEPS.find((step) => step >= rough) ??
+    Math.ceil(rough / 86_400_000) * 86_400_000
+  );
+}
+
+export function ticksFor(
+  [min, max]: [number, number],
+  count = 4,
+  stepFor = niceStep,
+): number[] {
+  const step = stepFor((max - min) / count);
   const ticks: number[] = [];
   for (
     let value = Math.ceil(min / step) * step;
@@ -100,12 +120,19 @@ export function makeScale(
 // Gaps are breaks in the line, not zeroes joined through - a venue that wasn't
 // probed and a venue that reported nothing are different, and a line drawn
 // straight across the gap asserts something the data does not say.
-export function linePath(points: Point[], scale: Scale): string {
+// A gap lifts the pen, unless `joinGaps` - for a series where a missing point
+// means "nothing happened here" rather than "nothing was recorded", and the
+// line should run on to the next one.
+export function linePath(
+  points: Point[],
+  scale: Scale,
+  { joinGaps = false } = {},
+): string {
   let path = "";
   let penDown = false;
   points.forEach((point, index) => {
     if (point.y === null || !Number.isFinite(point.y)) {
-      penDown = false;
+      if (!joinGaps) penDown = false;
       return;
     }
     const command = penDown ? "L" : "M";

@@ -3,6 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import {
   areaPath,
+  durationStep,
   linePath,
   makeScale,
   niceDomain,
@@ -24,6 +25,11 @@ export type Series = {
   // Draws an area under the line. Only ever used on a single-series chart;
   // stacked areas hide the shape of everything above the bottom band.
   area?: boolean;
+  // Draws the line across missing values instead of breaking it, with a dot on
+  // every value so it stays clear which points are real. For a series where a
+  // gap means the thing didn't happen there - a job a runner didn't pick up
+  // that day - rather than a hole in the record.
+  joinGaps?: boolean;
 };
 
 type Props = {
@@ -40,6 +46,12 @@ type Props = {
   // A reference line - a mean, a budget, a threshold - with its own label.
   reference?: { value: number; label: string };
   yLabel?: string;
+  // The drawing's own width, which text and strokes are sized against before
+  // CSS scales it to the container. Lower it for a chart shown small - one of
+  // a grid - or its text shrinks with it past reading.
+  width?: number;
+  // A grid of charts sharing series carries one legend for all of them.
+  legend?: boolean;
 };
 
 // Labelled indices are counted back from the last point, so the final label is
@@ -61,6 +73,8 @@ export default function LineChart({
   format,
   reference,
   yLabel,
+  width = 720,
+  legend = true,
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -68,17 +82,19 @@ export default function LineChart({
 
   // A fixed viewBox scaled by CSS: the chart stays crisp at any width without
   // measuring the container, which a static export cannot do before paint.
-  const width = 720;
 
   const { scale, paths, ticks } = useMemo(() => {
     const all = series
       .flatMap((entry) => entry.values)
       .filter((value): value is number => value !== null);
-    const domain = niceDomain(reference ? [...all, reference.value] : all);
+    const stepFor = format === "duration" ? durationStep : undefined;
+    const domain = niceDomain(reference ? [...all, reference.value] : all, {
+      stepFor,
+    });
     const built = makeScale(width, height, labels.length, domain);
     return {
       scale: built,
-      ticks: ticksFor(domain),
+      ticks: ticksFor(domain, 4, stepFor),
       paths: series.map((entry) => {
         const points: Point[] = entry.values.map((value, index) => ({
           x: index,
@@ -86,15 +102,16 @@ export default function LineChart({
         }));
         return {
           ...entry,
-          line: linePath(points, built),
+          line: linePath(points, built, { joinGaps: entry.joinGaps }),
           // A value with a gap on both sides has no neighbour to draw a line
           // to, so the path above leaves it invisible - a day that follows a
           // missing one vanishes. Those get a dot of their own.
           isolated: points.filter(
             (point, index) =>
               point.y !== null &&
-              (entry.values[index - 1] ?? null) === null &&
-              (entry.values[index + 1] ?? null) === null,
+              (entry.joinGaps ||
+                ((entry.values[index - 1] ?? null) === null &&
+                  (entry.values[index + 1] ?? null) === null)),
           ),
           area: entry.area
             ? areaPath(points, built, Math.max(domain[0], 0))
@@ -102,7 +119,7 @@ export default function LineChart({
         };
       }),
     };
-  }, [series, labels.length, height, reference]);
+  }, [series, labels.length, height, reference, width, format]);
 
   const slotVar = (entry: { slot?: number }) =>
     `var(--series-${entry.slot ?? 1})`;
@@ -125,7 +142,11 @@ export default function LineChart({
   const formatValue = VALUE_FORMAT[format];
   const tickLabel = tickFormatter(format, ticks);
 
-  const showLabel = labelledIndices(labels.length);
+  // About one date label per 110 units, so a narrow chart doesn't crowd them.
+  const showLabel = labelledIndices(
+    labels.length,
+    Math.max(2, Math.min(6, Math.floor(width / 110))),
+  );
 
   return (
     <div className={styles.wrap}>
@@ -294,7 +315,7 @@ export default function LineChart({
         </div>
       )}
 
-      {series.length > 1 && (
+      {legend && series.length > 1 && (
         <ul className={styles.legend}>
           {series.map((entry) => (
             <li key={entry.key} className={styles.legendItem}>

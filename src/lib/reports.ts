@@ -362,6 +362,32 @@ export type DurationSpread = {
   maxMs: number | null;
 };
 
+// Job durations by the machine that ran them — see `runnerReport` in
+// scripts/lib/report-pipeline.mjs.
+export type RunnerJob = {
+  name: string;
+  // Per runner group that ran this job, its median duration each day in
+  // `RunnerReport.days`. Null on a day that group didn't run it.
+  daily: Record<string, (number | null)[]>;
+  latest: {
+    startedAt: string;
+    ms: number;
+    runner: string;
+    group: string;
+    runUrl: string;
+  };
+  // The runs before the latest on the same runner group, up to
+  // `previousRuns` of them. Null when the latest was its first there.
+  previous: { runs: number; meanMs: number } | null;
+};
+
+export type RunnerReport = {
+  groups: { key: string; runners: number }[];
+  days: string[];
+  previousRuns: number;
+  jobs: RunnerJob[];
+};
+
 export type WorkflowReport = {
   key: string;
   name: string;
@@ -396,6 +422,7 @@ export type WorkflowReport = {
     durationMs: number;
     queuedMs: number | null;
   }[];
+  byRunner: RunnerReport | null;
   recentFailures: {
     id: number;
     startedAt: string;
