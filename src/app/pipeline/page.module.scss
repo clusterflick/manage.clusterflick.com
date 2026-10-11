@@ -119,13 +119,48 @@
   font-size: 0.75rem;
 }
 
-.runnerSummary {
+.runnerLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+// Small multiples: as many columns as fit at a readable width, one on a phone.
+.jobCharts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px 22px;
+}
+
+.jobChart {
+  margin: 0;
+  min-width: 0;
+}
+
+.jobChartTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
 .runnerTable {
-  margin-top: 18px;
+  margin-top: 22px;
 }

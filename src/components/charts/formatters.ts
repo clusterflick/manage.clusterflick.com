@@ -19,8 +19,7 @@
 
 import { compactCount, count, money, percent } from "@/lib/format";
 
-export type FormatKey =
-  "money" | "percent" | "count" | "duration" | "compact" | "ratio";
+export type FormatKey = "money" | "percent" | "count" | "duration" | "compact";
 
 // How many decimals a step needs before consecutive ticks stop colliding.
 function decimalsFor(step: number, scale = 1): number {
@@ -36,7 +35,6 @@ export const VALUE_FORMAT: Record<FormatKey, (value: number) => string> = {
   count: (value) => count(Math.round(value)),
   duration: (value) => exactDuration(value),
   compact: (value) => compactCount(Math.round(value)),
-  ratio: (value) => `${value.toFixed(2)}×`,
 };
 
 function exactDuration(ms: number): string {
@@ -74,10 +72,6 @@ export function tickFormatter(
       }
       const places = step < 1_800_000 ? 1 : 0;
       return (value) => `${(value / 3_600_000).toFixed(places)}h`;
-    }
-    case "ratio": {
-      const places = Math.max(decimalsFor(step), 1);
-      return (value) => `${value.toFixed(places)}×`;
     }
     case "count":
     case "compact":

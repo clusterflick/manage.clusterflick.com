@@ -362,35 +362,30 @@ export type DurationSpread = {
   maxMs: number | null;
 };
 
-// A runner group's figures for one job, before and after a dated change.
-export type RunnerJobChange = {
-  beforeMs: number | null;
-  afterMs: number | null;
-  before: number;
-  after: number;
-  ratio: number | null;
-};
-
-export type RunnerChange = { date: string; group: string; label: string };
-
 // Job durations by the machine that ran them — see `runnerReport` in
 // scripts/lib/report-pipeline.mjs.
-export type RunnerReport = {
-  groups: { key: string; runners: number; jobs: number }[];
-  // Per day, each group's median job duration as a multiple of that job's
-  // typical duration. Null where a group ran nothing that day.
-  days: { date: string; byGroup: Record<string, number | null> }[];
-  changes: RunnerChange[];
-  // The latest change inside the window, which the table splits on.
-  change: RunnerChange | null;
-  jobs: { name: string; byGroup: Record<string, RunnerJobChange> }[];
-  summary: {
+export type RunnerJob = {
+  name: string;
+  // Per runner group that ran this job, its median duration each day in
+  // `RunnerReport.days`. Null on a day that group didn't run it.
+  daily: Record<string, (number | null)[]>;
+  latest: {
+    startedAt: string;
+    ms: number;
+    runner: string;
     group: string;
-    jobs: number;
-    medianRatio: number | null;
-    minRatio: number | null;
-    maxRatio: number | null;
-  }[];
+    runUrl: string;
+  };
+  // The runs before the latest on the same runner group, up to
+  // `previousRuns` of them. Null when the latest was its first there.
+  previous: { runs: number; meanMs: number } | null;
+};
+
+export type RunnerReport = {
+  groups: { key: string; runners: number }[];
+  days: string[];
+  previousRuns: number;
+  jobs: RunnerJob[];
 };
 
 export type WorkflowReport = {

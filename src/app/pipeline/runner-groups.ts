@@ -11,5 +11,7 @@ const GROUPS: Record<string, { label: string; slot: number }> = {
 export const groupLabel = (key: string) => GROUPS[key]?.label ?? key;
 export const groupSlot = (key: string) => GROUPS[key]?.slot ?? 8;
 
-export const ratioLabel = (ratio: number | null) =>
-  ratio === null ? "—" : `${ratio.toFixed(2)}×`;
+// Every Retrieve job is named "Retrieve <source>"; in a panel already titled
+// for the flow, the prefix is noise.
+export const shortJobName = (name: string) =>
+  name.replace(/^(Retrieve|Transform) /, "");

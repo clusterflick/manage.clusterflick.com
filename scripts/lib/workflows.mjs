@@ -24,17 +24,6 @@ export const WORKFLOWS = [
     // on which machine picked them up. Each successful job's duration and
     // runner are kept, so a change on one machine shows against the others.
     byRunner: true,
-    // Dated changes to the runner machines, drawn on the by-runner chart and
-    // used to split its table into before and after. `group` is the runner
-    // group the change applied to, as `runnerGroup` in report-pipeline.mjs
-    // names it.
-    runnerChanges: [
-      {
-        date: "2026-10-05",
-        group: "macos",
-        label: "macOS workers moved network",
-      },
-    ],
   },
   {
     key: "transform",

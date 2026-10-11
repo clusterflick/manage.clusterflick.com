@@ -3,7 +3,7 @@ import Panel from "@/components/panel";
 import PageHeader from "@/components/page-header";
 import StatusPill from "@/components/status-pill";
 import LineChart from "@/components/charts/line-chart";
-import { pipeline, type RunnerReport } from "@/lib/reports";
+import { pipeline, type RunnerJob, type RunnerReport } from "@/lib/reports";
 import { rateStatus } from "@/lib/status";
 import {
   count,
@@ -13,7 +13,7 @@ import {
   percent,
 } from "@/lib/format";
 import RunnerJobsTable from "./runner-jobs-table";
-import { groupLabel, groupSlot, ratioLabel } from "./runner-groups";
+import { groupLabel, groupSlot, shortJobName } from "./runner-groups";
 import styles from "./page.module.scss";
 
 export const metadata = { title: "Pipeline — Clusterflick manage" };
@@ -229,81 +229,85 @@ export default function PipelinePage() {
   );
 }
 
-// How long a flow's jobs take on each machine. Run duration can't show this:
-// a run lasts as long as its slowest job, and re-run runs are left out of it
-// altogether, where a job that succeeded is a clean measurement whichever
-// attempt it was in.
+// How long each of a flow's jobs takes on each machine. Run duration can't
+// show this: a run lasts as long as its slowest job, and re-run runs are left
+// out of it altogether, where a job that succeeded is a clean measurement
+// whichever attempt it was in.
+//
+// One small chart per job rather than one chart of all of them: jobs run from
+// three minutes to two hours, and fourteen jobs on two machines is more lines
+// than anyone can follow. Each chart gets its own axis, and each machine the
+// same colour in all of them.
+// Slowest first: those are the jobs a run waits on.
+function byTypicalDuration(jobs: RunnerJob[]) {
+  const typical = (job: RunnerJob) => job.previous?.meanMs ?? job.latest.ms;
+  return [...jobs].sort((a, b) => typical(b) - typical(a));
+}
+
 function RunnerPanel({ name, report }: { name: string; report: RunnerReport }) {
-  const markers = report.changes.flatMap(({ date, label }) => {
-    const index = report.days.findIndex((day) => day.date >= date);
-    return index > 0 ? [{ index, label }] : [];
-  });
+  const labels = report.days.map((day) => dateLabel(day));
   return (
     <Panel
       id="runners"
       title={`${name} jobs by runner`}
       note={
         <>
-          Each job measured against its own typical duration — its median on
-          every runner across the window — so jobs of two hours and of three
-          minutes can be read together. A day at 1.3× means the jobs that
-          machine ran took 30% longer than usual. Only successful jobs, from
-          every attempt, and only jobs that have run on more than one machine.
+          Each job&apos;s median duration per day on each machine, from its
+          successful runs in every attempt, slowest job first. A line runs on
+          across days a machine didn&apos;t pick the job up; the dots are the
+          days it did. Below, each job&apos;s latest run against the mean of the{" "}
+          {report.previousRuns} before it on the same machine.
         </>
       }
     >
-      {report.change && report.summary.length > 0 && (
-        <div className={styles.runnerSummary}>
-          {report.summary.map((entry) => {
-            const group = report.groups.find((g) => g.key === entry.group);
-            return (
-              <div key={entry.group} className={styles.figure}>
-                <span className={styles.figureLabel}>
-                  {groupLabel(entry.group)} since{" "}
-                  {dateLabel(report.change!.date)}
-                </span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {ratioLabel(entry.medianRatio)}
-                </span>
-                <span className={styles.figureAside}>
-                  {group?.runners ?? 0} runners · median of {entry.jobs} jobs,
-                  ranging {ratioLabel(entry.minRatio)} to{" "}
-                  {ratioLabel(entry.maxRatio)}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <ul className={styles.runnerLegend}>
+        {report.groups.map((group) => (
+          <li key={group.key}>
+            <span
+              className={styles.swatch}
+              style={{ background: `var(--series-${groupSlot(group.key)})` }}
+              aria-hidden="true"
+            />
+            {groupLabel(group.key)}
+            {/* GitHub's runners are fresh for every job, so a count of them
+                says nothing. */}
+            {group.key !== "github-hosted" && (
+              <span className={styles.runs}>
+                {" "}
+                · {group.runners} {group.runners === 1 ? "runner" : "runners"}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
 
-      <LineChart
-        series={report.groups.map(({ key }) => ({
-          key,
-          label: groupLabel(key),
-          values: report.days.map((day) => day.byGroup[key] ?? null),
-          slot: groupSlot(key),
-        }))}
-        labels={report.days.map((day) => dateLabel(day.date))}
-        format="ratio"
-        height={200}
-        reference={{ value: 1, label: "typical" }}
-        markers={markers}
-      />
+      <div className={styles.jobCharts}>
+        {byTypicalDuration(report.jobs).map((job) => (
+          <figure key={job.name} className={styles.jobChart}>
+            <figcaption className={styles.jobChartTitle}>
+              {shortJobName(job.name)}
+            </figcaption>
+            <LineChart
+              series={Object.entries(job.daily).map(([group, values]) => ({
+                key: group,
+                label: groupLabel(group),
+                values,
+                slot: groupSlot(group),
+                joinGaps: true,
+              }))}
+              labels={labels}
+              format="duration"
+              width={340}
+              height={150}
+              legend={false}
+            />
+          </figure>
+        ))}
+      </div>
 
-      {report.change && report.jobs.length > 0 && (
-        <details className={`${styles.failures} ${styles.runnerTable}`}>
-          <summary>
-            Each job before and after {dateLabel(report.change.date)} (
-            {report.change.label})
-          </summary>
-          <p className={styles.thin}>
-            Median duration on each machine, with the number of runs it is over
-            in brackets. A change worked out from one or two runs is a hint
-            rather than a finding.
-          </p>
-          <RunnerJobsTable report={report} />
-        </details>
-      )}
+      <div className={styles.runnerTable}>
+        <RunnerJobsTable report={report} />
+      </div>
     </Panel>
   );
 }
