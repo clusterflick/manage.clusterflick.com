@@ -29,7 +29,15 @@
 // which writes the README badges from the same API. The site is the place that
 // shows the runs behind the badge.
 
-import { groupBy, londonDay, mean, percentile, rate, round } from "./stats.mjs";
+import {
+  groupBy,
+  londonDay,
+  mean,
+  median,
+  percentile,
+  rate,
+  round,
+} from "./stats.mjs";
 
 // Bands for the unassisted percentage, chosen so that "needs a hand more than
 // once a week" stops being green. Same thresholds as the badges.
@@ -60,6 +68,144 @@ function spread(values) {
     p90Ms: Math.round(percentile(present, 0.9)),
     maxMs: Math.max(...present),
   };
+}
+
+// Runners are named per worker - self-hosted-macos-3, self-hosted-pi4-5 - and
+// the workers on one machine share its network and its CPU, so they are read
+// together. GitHub's own runners are numbered per job and have nothing in
+// common with each other but being GitHub's.
+export function runnerGroup(runner) {
+  if (/^GitHub Actions \d+$/.test(runner)) return "github-hosted";
+  return runner.replace(/^self-hosted-/, "").replace(/-\d+$/, "");
+}
+
+// How long a flow's jobs take, by the machine that ran them.
+//
+// Jobs differ by an order of magnitude - BFI takes two hours, Vue three
+// minutes - and which machine picks up which job is down to which was free, so
+// a raw average per machine mostly measures the job mix. Each job is measured
+// against its own typical duration instead: its median across every runner in
+// the window. A day's figure for a machine is the median of those ratios over
+// the jobs it ran, so 1.3× reads as "jobs on this machine took 30% longer than
+// usual that day" whatever the jobs were. Only jobs that ran on more than one
+// machine count - one only ever run in one place has nothing to compare
+// against, which rules out the GitHub-hosted release job.
+function runnerReport(target, runs) {
+  const executions = runs
+    .flatMap((run) => run.jobs ?? [])
+    .map((job) => ({ ...job, group: runnerGroup(job.runner) }));
+  const byJob = groupBy(executions, (job) => job.name);
+  const compared = [...byJob].filter(
+    ([, jobs]) => new Set(jobs.map((job) => job.group)).size > 1,
+  );
+  if (!compared.length) return null;
+
+  const typical = new Map(
+    compared.map(([name, jobs]) => [name, median(jobs.map((job) => job.ms))]),
+  );
+  const measured = compared
+    .flatMap(([, jobs]) => jobs)
+    .map((job) => ({
+      ...job,
+      day: londonDay(job.startedAt),
+      ratio: job.ms / typical.get(job.name),
+    }));
+
+  const groups = [...groupBy(measured, (job) => job.group)]
+    .map(([key, jobs]) => ({
+      key,
+      runners: new Set(jobs.map((job) => job.runner)).size,
+      jobs: jobs.length,
+    }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+  const days = [...new Set(measured.map((job) => job.day))].sort();
+
+  const daily = days.map((date) => {
+    const onDay = measured.filter((job) => job.day === date);
+    return {
+      date,
+      byGroup: Object.fromEntries(
+        groups.map(({ key }) => {
+          const ratios = onDay
+            .filter((job) => job.group === key)
+            .map((job) => job.ratio);
+          return [key, ratios.length ? round(median(ratios), 3) : null];
+        }),
+      ),
+    };
+  });
+
+  // Each job before and after the latest change inside the window, per
+  // machine. Only a change with days on both sides of it says anything.
+  const change =
+    [...(target.runnerChanges ?? [])]
+      .filter((entry) => entry.date > days[0] && entry.date <= days.at(-1))
+      .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+  const jobs = change
+    ? compared
+        .map(([name, jobRuns]) => ({
+          name,
+          byGroup: Object.fromEntries(
+            groups.map(({ key }) => {
+              const own = jobRuns.filter((job) => job.group === key);
+              const before = own
+                .filter((job) => londonDay(job.startedAt) < change.date)
+                .map((job) => job.ms);
+              const after = own
+                .filter((job) => londonDay(job.startedAt) >= change.date)
+                .map((job) => job.ms);
+              const beforeMs = before.length ? median(before) : null;
+              const afterMs = after.length ? median(after) : null;
+              return [
+                key,
+                {
+                  beforeMs,
+                  afterMs,
+                  before: before.length,
+                  after: after.length,
+                  ratio:
+                    beforeMs && afterMs ? round(afterMs / beforeMs, 3) : null,
+                },
+              ];
+            }),
+          ),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name))
+    : [];
+
+  // The typical job's change per machine: the median of the per-job ratios,
+  // with the range beside it so one figure doesn't stand in for all of them.
+  const summary = change
+    ? groups.map(({ key }) => {
+        const ratios = jobs
+          .map((job) => job.byGroup[key].ratio)
+          .filter((ratio) => ratio !== null);
+        return {
+          group: key,
+          jobs: ratios.length,
+          medianRatio: ratios.length ? round(median(ratios), 3) : null,
+          minRatio: ratios.length ? round(Math.min(...ratios), 3) : null,
+          maxRatio: ratios.length ? round(Math.max(...ratios), 3) : null,
+        };
+      })
+    : [];
+
+  return {
+    groups,
+    days: daily,
+    changes: (target.runnerChanges ?? []).filter(
+      (entry) => entry.date > days[0] && entry.date <= days.at(-1),
+    ),
+    change,
+    jobs,
+    summary,
+  };
+}
+
+function withoutJobs(run) {
+  const copy = { ...run };
+  delete copy.jobs;
+  return copy;
 }
 
 export default function buildPipelineReport(targets, runsByKey, meta) {
@@ -171,6 +317,7 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
           durationMs: run.executionMs,
           queuedMs: run.queuedMs,
         })),
+      byRunner: target.byRunner ? runnerReport(target, runs) : null,
       recentFailures: failures.slice(0, 12).map((run) => ({
         id: run.id,
         startedAt: run.startedAt,
@@ -180,8 +327,12 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
         title: run.displayTitle,
         url: run.url,
       })),
+      // Without its per-job durations, which the overview would otherwise
+      // carry along for nothing.
       lastRun: runs.length
-        ? [...runs].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+        ? withoutJobs(
+            [...runs].sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0],
+          )
         : null,
     };
   });

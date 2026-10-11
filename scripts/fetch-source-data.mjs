@@ -37,6 +37,7 @@ import {
   downloadFile,
   hasToken,
   latestRelease,
+  listAttemptJobs,
   listReleases,
   listRunJobs,
   listWorkflowRuns,
@@ -449,6 +450,38 @@ async function fetchLlmVenueUsage() {
 //
 // Skipped jobs are ignored throughout. They carry timestamps but never ran, and
 // a trailing skipped job would otherwise extend execution past the real end.
+// Each successful job on its own: which runner took it and how long it ran.
+// A run's duration is its slowest job, so a machine slowing down barely moves
+// it; per job it shows plainly. Taken from every attempt of the run - a job
+// that succeeded is a clean measurement whichever attempt it was in, unlike the
+// run around it. A job carried into a later attempt keeps its id, so it is
+// counted once.
+async function jobDurations(target, run, latestJobs) {
+  const earlier = [];
+  for (let attempt = 1; attempt < run.attempt; attempt += 1) {
+    earlier.push(...(await listAttemptJobs(target.repo, run.id, attempt)));
+  }
+  const byId = new Map([...earlier, ...latestJobs].map((job) => [job.id, job]));
+  return [...byId.values()]
+    .filter(
+      (job) =>
+        job.conclusion === "success" &&
+        job.runner_name &&
+        job.started_at &&
+        job.completed_at,
+    )
+    .map((job) => ({
+      name: job.name,
+      runner: job.runner_name,
+      startedAt: job.started_at,
+      ms: Math.max(
+        new Date(job.completed_at).getTime() -
+          new Date(job.started_at).getTime(),
+        0,
+      ),
+    }));
+}
+
 function timingsFor(run, jobs) {
   const ran = jobs.filter(
     (job) => job.conclusion !== "skipped" && job.started_at && job.completed_at,
@@ -571,9 +604,14 @@ async function fetchWorkflowRuns() {
         await mapWithConcurrency(inWindow, 6, async (run) => {
           const key = `${run.id}-${run.attempt}`;
           let timings = timingsCache[key];
+          // Cached before job durations were kept, so looked up once more.
+          if (timings && target.byRunner && !timings.jobs) timings = undefined;
           if (!timings) {
             const jobs = await listRunJobs(target.repo, run.id);
             timings = timingsFor(run, jobs);
+            if (target.byRunner) {
+              timings.jobs = await jobDurations(target, run, jobs);
+            }
             if (target.guardJob && run.conclusion === "success") {
               timings.didNothing = didNothing(jobs, target.guardJob);
             }

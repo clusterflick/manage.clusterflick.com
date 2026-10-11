@@ -1,8 +1,9 @@
+import { Fragment } from "react";
 import Panel from "@/components/panel";
 import PageHeader from "@/components/page-header";
 import StatusPill from "@/components/status-pill";
 import LineChart from "@/components/charts/line-chart";
-import { pipeline } from "@/lib/reports";
+import { pipeline, type RunnerReport } from "@/lib/reports";
 import { rateStatus } from "@/lib/status";
 import {
   count,
@@ -11,6 +12,8 @@ import {
   duration,
   percent,
 } from "@/lib/format";
+import RunnerJobsTable from "./runner-jobs-table";
+import { groupLabel, groupSlot, ratioLabel } from "./runner-groups";
 import styles from "./page.module.scss";
 
 export const metadata = { title: "Pipeline — Clusterflick manage" };
@@ -36,182 +39,271 @@ export default function PipelinePage() {
         // reported nothing must not read as a flow that did nothing.
         const noData = workflow.runs === 0;
         return (
-          <Panel
-            key={workflow.key}
-            id={workflow.key}
-            title={
-              <span className={styles.flowTitle}>
-                {workflow.name}
-                <span className={`${styles.repo} mono`}>
-                  {workflow.repo} · {workflow.workflow}
+          <Fragment key={workflow.key}>
+            <Panel
+              id={workflow.key}
+              title={
+                <span className={styles.flowTitle}>
+                  {workflow.name}
+                  <span className={`${styles.repo} mono`}>
+                    {workflow.repo} · {workflow.workflow}
+                  </span>
                 </span>
-              </span>
-            }
-            note={
-              noData ? (
+              }
+              note={
+                noData ? (
+                  <>
+                    No run history came back for this flow. Every flow here runs
+                    at least daily, so these figures are missing rather than
+                    zero — GitHub&apos;s run list intermittently answers from a
+                    stale index, months behind and with nothing in the response
+                    to say so. Rebuilding usually clears it.
+                  </>
+                ) : workflow.skippedNoOps > 0 ? (
+                  <>
+                    {count(workflow.skippedNoOps)} runs are excluded: this flow
+                    opens with a &ldquo;have we already released today?&rdquo;
+                    job, and when it has, every other job is skipped. Those runs
+                    finish in seconds having done nothing, and counting them
+                    would report a build time of about nine seconds.
+                  </>
+                ) : workflow.superseded > 0 ? (
+                  <>
+                    {count(workflow.superseded)} cancelled runs are excluded:
+                    this flow cancels a build in flight when newer data arrives,
+                    so those runs were replaced by a later build rather than
+                    failing.
+                  </>
+                ) : undefined
+              }
+              actions={
                 <>
-                  No run history came back for this flow. Every flow here runs
-                  at least daily, so these figures are missing rather than zero
-                  — GitHub&apos;s run list intermittently answers from a stale
-                  index, months behind and with nothing in the response to say
-                  so. Rebuilding usually clears it.
+                  <StatusPill severity={rateStatus(workflow.successRate)}>
+                    {workflow.successRate === null
+                      ? "no data"
+                      : `${percent(workflow.successRate)} succeeded`}
+                  </StatusPill>
+                  {workflow.reportsUnassisted &&
+                    workflow.unassistedRate !== null && (
+                      <StatusPill
+                        severity={rateStatus(workflow.unassistedRate)}
+                      >
+                        {percent(workflow.unassistedRate)} unassisted
+                      </StatusPill>
+                    )}
                 </>
-              ) : workflow.skippedNoOps > 0 ? (
-                <>
-                  {count(workflow.skippedNoOps)} runs are excluded: this flow
-                  opens with a &ldquo;have we already released today?&rdquo;
-                  job, and when it has, every other job is skipped. Those runs
-                  finish in seconds having done nothing, and counting them would
-                  report a build time of about nine seconds.
-                </>
-              ) : workflow.superseded > 0 ? (
-                <>
-                  {count(workflow.superseded)} cancelled runs are excluded: this
-                  flow cancels a build in flight when newer data arrives, so
-                  those runs were replaced by a later build rather than failing.
-                </>
-              ) : undefined
-            }
-            actions={
-              <>
-                <StatusPill severity={rateStatus(workflow.successRate)}>
-                  {workflow.successRate === null
-                    ? "no data"
-                    : `${percent(workflow.successRate)} succeeded`}
-                </StatusPill>
-                {workflow.reportsUnassisted &&
-                  workflow.unassistedRate !== null && (
-                    <StatusPill severity={rateStatus(workflow.unassistedRate)}>
-                      {percent(workflow.unassistedRate)} unassisted
-                    </StatusPill>
-                  )}
-              </>
-            }
-          >
-            <div className={styles.summary}>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Runs</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {noData ? "—" : count(workflow.runs)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Needed a hand</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {noData ? "—" : count(workflow.assistedRuns)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Median run</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {duration(workflow.duration.medianMs)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>p90 run</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {duration(workflow.duration.p90Ms)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Slowest run</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {duration(workflow.duration.maxMs)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Worst queue wait</span>
-                <span className={`${styles.figureValue} numeric`}>
-                  {duration(workflow.queue.maxMs)}
-                </span>
-                <span className={styles.figureAside}>
-                  median {duration(workflow.queue.medianMs)}
-                </span>
-              </div>
-              <div className={styles.figure}>
-                <span className={styles.figureLabel}>Last run</span>
-                <span className={styles.figureValue}>
-                  {workflow.lastRun ? (
-                    <a
-                      href={workflow.lastRun.url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {dateTimeLabel(workflow.lastRun.startedAt)}
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </span>
-              </div>
-            </div>
-
-            {series.length > 1 ? (
-              <LineChart
-                series={[
-                  {
-                    key: "duration",
-                    label: `${workflow.name} duration`,
-                    values: series.map((run) => run.durationMs),
-                    slot: 1,
-                  },
-                ]}
-                labels={series.map((run) => dateLabel(run.startedAt))}
-                format="duration"
-                height={170}
-                reference={
-                  workflow.duration.medianMs
-                    ? {
-                        value: workflow.duration.medianMs,
-                        label: `median ${duration(workflow.duration.medianMs)}`,
-                      }
-                    : undefined
-                }
-              />
-            ) : (
-              <p className={styles.thin}>
-                {noData
-                  ? "No runs to plot."
-                  : "Not enough first-attempt successes in the window to plot a trend."}
-              </p>
-            )}
-
-            <div className={styles.conclusions}>
-              {workflow.conclusions.map((entry) => (
-                <span key={entry.conclusion} className={styles.conclusion}>
-                  <span className={styles.conclusionCount}>{entry.count}</span>
-                  {entry.conclusion}
-                </span>
-              ))}
-            </div>
-
-            {workflow.recentFailures.length > 0 && (
-              <details className={styles.failures}>
-                <summary>
-                  {workflow.recentFailures.length} recent{" "}
-                  {workflow.recentFailures.length === 1
-                    ? "failure"
-                    : "failures"}
-                </summary>
-                <ul className={styles.failureList}>
-                  {workflow.recentFailures.map((failure) => (
-                    <li key={failure.id}>
-                      <a href={failure.url} target="_blank" rel="noreferrer">
-                        {dateTimeLabel(failure.startedAt)}
+              }
+            >
+              <div className={styles.summary}>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Runs</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {noData ? "—" : count(workflow.runs)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Needed a hand</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {noData ? "—" : count(workflow.assistedRuns)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Median run</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {duration(workflow.duration.medianMs)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>p90 run</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {duration(workflow.duration.p90Ms)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Slowest run</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {duration(workflow.duration.maxMs)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Worst queue wait</span>
+                  <span className={`${styles.figureValue} numeric`}>
+                    {duration(workflow.queue.maxMs)}
+                  </span>
+                  <span className={styles.figureAside}>
+                    median {duration(workflow.queue.medianMs)}
+                  </span>
+                </div>
+                <div className={styles.figure}>
+                  <span className={styles.figureLabel}>Last run</span>
+                  <span className={styles.figureValue}>
+                    {workflow.lastRun ? (
+                      <a
+                        href={workflow.lastRun.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {dateTimeLabel(workflow.lastRun.startedAt)}
                       </a>
-                      <span className={styles.failureMeta}>
-                        {failure.conclusion}
-                        {failure.attempt > 1 && ` · attempt ${failure.attempt}`}
-                        {` · ${failure.event}`}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </details>
+                    ) : (
+                      "—"
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {series.length > 1 ? (
+                <LineChart
+                  series={[
+                    {
+                      key: "duration",
+                      label: `${workflow.name} duration`,
+                      values: series.map((run) => run.durationMs),
+                      slot: 1,
+                    },
+                  ]}
+                  labels={series.map((run) => dateLabel(run.startedAt))}
+                  format="duration"
+                  height={170}
+                  reference={
+                    workflow.duration.medianMs
+                      ? {
+                          value: workflow.duration.medianMs,
+                          label: `median ${duration(workflow.duration.medianMs)}`,
+                        }
+                      : undefined
+                  }
+                />
+              ) : (
+                <p className={styles.thin}>
+                  {noData
+                    ? "No runs to plot."
+                    : "Not enough first-attempt successes in the window to plot a trend."}
+                </p>
+              )}
+
+              <div className={styles.conclusions}>
+                {workflow.conclusions.map((entry) => (
+                  <span key={entry.conclusion} className={styles.conclusion}>
+                    <span className={styles.conclusionCount}>
+                      {entry.count}
+                    </span>
+                    {entry.conclusion}
+                  </span>
+                ))}
+              </div>
+
+              {workflow.recentFailures.length > 0 && (
+                <details className={styles.failures}>
+                  <summary>
+                    {workflow.recentFailures.length} recent{" "}
+                    {workflow.recentFailures.length === 1
+                      ? "failure"
+                      : "failures"}
+                  </summary>
+                  <ul className={styles.failureList}>
+                    {workflow.recentFailures.map((failure) => (
+                      <li key={failure.id}>
+                        <a href={failure.url} target="_blank" rel="noreferrer">
+                          {dateTimeLabel(failure.startedAt)}
+                        </a>
+                        <span className={styles.failureMeta}>
+                          {failure.conclusion}
+                          {failure.attempt > 1 &&
+                            ` · attempt ${failure.attempt}`}
+                          {` · ${failure.event}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </Panel>
+            {workflow.byRunner && (
+              <RunnerPanel name={workflow.name} report={workflow.byRunner} />
             )}
-          </Panel>
+          </Fragment>
         );
       })}
     </>
+  );
+}
+
+// How long a flow's jobs take on each machine. Run duration can't show this:
+// a run lasts as long as its slowest job, and re-run runs are left out of it
+// altogether, where a job that succeeded is a clean measurement whichever
+// attempt it was in.
+function RunnerPanel({ name, report }: { name: string; report: RunnerReport }) {
+  const markers = report.changes.flatMap(({ date, label }) => {
+    const index = report.days.findIndex((day) => day.date >= date);
+    return index > 0 ? [{ index, label }] : [];
+  });
+  return (
+    <Panel
+      id="runners"
+      title={`${name} jobs by runner`}
+      note={
+        <>
+          Each job measured against its own typical duration — its median on
+          every runner across the window — so jobs of two hours and of three
+          minutes can be read together. A day at 1.3× means the jobs that
+          machine ran took 30% longer than usual. Only successful jobs, from
+          every attempt, and only jobs that have run on more than one machine.
+        </>
+      }
+    >
+      {report.change && report.summary.length > 0 && (
+        <div className={styles.runnerSummary}>
+          {report.summary.map((entry) => {
+            const group = report.groups.find((g) => g.key === entry.group);
+            return (
+              <div key={entry.group} className={styles.figure}>
+                <span className={styles.figureLabel}>
+                  {groupLabel(entry.group)} since{" "}
+                  {dateLabel(report.change!.date)}
+                </span>
+                <span className={`${styles.figureValue} numeric`}>
+                  {ratioLabel(entry.medianRatio)}
+                </span>
+                <span className={styles.figureAside}>
+                  {group?.runners ?? 0} runners · median of {entry.jobs} jobs,
+                  ranging {ratioLabel(entry.minRatio)} to{" "}
+                  {ratioLabel(entry.maxRatio)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <LineChart
+        series={report.groups.map(({ key }) => ({
+          key,
+          label: groupLabel(key),
+          values: report.days.map((day) => day.byGroup[key] ?? null),
+          slot: groupSlot(key),
+        }))}
+        labels={report.days.map((day) => dateLabel(day.date))}
+        format="ratio"
+        height={200}
+        reference={{ value: 1, label: "typical" }}
+        markers={markers}
+      />
+
+      {report.change && report.jobs.length > 0 && (
+        <details className={`${styles.failures} ${styles.runnerTable}`}>
+          <summary>
+            Each job before and after {dateLabel(report.change.date)} (
+            {report.change.label})
+          </summary>
+          <p className={styles.thin}>
+            Median duration on each machine, with the number of runs it is over
+            in brackets. A change worked out from one or two runs is a hint
+            rather than a finding.
+          </p>
+          <RunnerJobsTable report={report} />
+        </details>
+      )}
+    </Panel>
   );
 }

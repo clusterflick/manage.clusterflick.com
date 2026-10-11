@@ -109,3 +109,23 @@
   font-size: 0.73rem;
   font-variant-numeric: tabular-nums;
 }
+
+.strong {
+  font-weight: 600;
+}
+
+.runs {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.runnerSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.runnerTable {
+  margin-top: 18px;
+}

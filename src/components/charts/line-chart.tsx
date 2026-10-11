@@ -26,6 +26,14 @@ export type Series = {
   area?: boolean;
 };
 
+// A dated change drawn as a dashed vertical line just before the point at
+// `index` - the first point the change applied to - so a shift in the line can
+// be read against what caused it.
+export type LineMarker = {
+  index: number;
+  label: string;
+};
+
 type Props = {
   series: Series[];
   labels: string[];
@@ -40,6 +48,7 @@ type Props = {
   // A reference line - a mean, a budget, a threshold - with its own label.
   reference?: { value: number; label: string };
   yLabel?: string;
+  markers?: LineMarker[];
 };
 
 // Labelled indices are counted back from the last point, so the final label is
@@ -61,6 +70,7 @@ export default function LineChart({
   format,
   reference,
   yLabel,
+  markers = [],
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -127,141 +137,192 @@ export default function LineChart({
 
   const showLabel = labelledIndices(labels.length);
 
+  // Marker labels get a band of their own above the plot, a row each, so no
+  // line can run through them. The band is added to the chart's height and the
+  // plot drawn below it, rather than taken out of the plot.
+  const markerBand = markers.length > 0 ? markers.length * 14 + 4 : 0;
+  const svgHeight = height + markerBand;
+  // Each marker's line starts at its own label, capped with a dot. Past the
+  // middle labels read leftwards, clear of the chart's right edge, and rows
+  // are handed out so a label only runs across lines that start below it -
+  // the same placement as StackedBars.
+  const placedMarkers = (() => {
+    const middle = width / 2;
+    const placed = markers.map((marker) => {
+      const x = scale.x(Math.max(marker.index - 0.5, 0));
+      return { marker, x, leftwards: x > middle };
+    });
+    const ordered = [
+      ...placed.filter((entry) => entry.leftwards).sort((a, b) => b.x - a.x),
+      ...placed.filter((entry) => !entry.leftwards).sort((a, b) => a.x - b.x),
+    ];
+    return ordered.map((entry, row) => ({ ...entry, y: 8 + row * 14 }));
+  })();
+
   return (
     <div className={styles.wrap}>
       <svg
         ref={svgRef}
-        viewBox={`0 0 ${width} ${height}`}
+        viewBox={`0 0 ${width} ${svgHeight}`}
         className={styles.svg}
-        style={{ aspectRatio: `${width} / ${height}` }}
+        style={{ aspectRatio: `${width} / ${svgHeight}` }}
         role="img"
         aria-label={`${series.map((entry) => entry.label).join(", ")} over ${labels.length} points`}
         onPointerMove={onMove}
         onPointerLeave={() => setHover(null)}
       >
-        <defs>
-          <clipPath id={clipId}>
-            <rect x={46} y={0} width={width - 46 - 14} height={height - 26} />
-          </clipPath>
-        </defs>
-
-        {/* Grid and axis are recessive - they orient, they don't compete. */}
-        {ticks.map((tick) => (
-          <g key={tick}>
+        {placedMarkers.map(({ marker, x, y, leftwards }) => (
+          <g
+            key={`marker-${marker.index}-${marker.label}`}
+            pointerEvents="none"
+          >
             <line
-              x1={46}
-              x2={width - 14}
-              y1={scale.y(tick)}
-              y2={scale.y(tick)}
-              stroke="var(--grid)"
-              strokeWidth={1}
-            />
-            <text
-              x={40}
-              y={scale.y(tick)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              className={styles.axisText}
-            >
-              {tickLabel(tick)}
-            </text>
-          </g>
-        ))}
-
-        {reference && (
-          <g>
-            <line
-              x1={46}
-              x2={width - 14}
-              y1={scale.y(reference.value)}
-              y2={scale.y(reference.value)}
+              x1={x}
+              x2={x}
+              y1={y}
+              y2={markerBand + height - 26}
               stroke="var(--axis)"
               strokeWidth={1}
               strokeDasharray="4 4"
             />
+            <circle cx={x} cy={y} r={2.5} fill="var(--text-secondary)" />
             <text
-              x={width - 16}
-              y={scale.y(reference.value) - 5}
-              textAnchor="end"
-              className={styles.referenceText}
+              x={leftwards ? x - 6 : x + 6}
+              y={y}
+              textAnchor={leftwards ? "end" : "start"}
+              dominantBaseline="middle"
+              className={styles.markerText}
             >
-              {reference.label}
+              {marker.label}
             </text>
           </g>
-        )}
+        ))}
 
-        <g clipPath={`url(#${clipId})`}>
-          {paths.map((entry) => (
-            <g key={entry.key}>
-              {entry.area && (
-                <path d={entry.area} fill={slotVar(entry)} opacity={0.14} />
-              )}
-              <path
-                d={entry.line}
-                fill="none"
-                stroke={slotVar(entry)}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        <g transform={`translate(0 ${markerBand})`}>
+          <defs>
+            <clipPath id={clipId}>
+              <rect x={46} y={0} width={width - 46 - 14} height={height - 26} />
+            </clipPath>
+          </defs>
+
+          {/* Grid and axis are recessive - they orient, they don't compete. */}
+          {ticks.map((tick) => (
+            <g key={tick}>
+              <line
+                x1={46}
+                x2={width - 14}
+                y1={scale.y(tick)}
+                y2={scale.y(tick)}
+                stroke="var(--grid)"
+                strokeWidth={1}
               />
-              {entry.isolated.map((point) => (
-                <circle
-                  key={point.x}
-                  cx={scale.x(point.x)}
-                  cy={scale.y(point.y!)}
-                  r={3}
-                  fill={slotVar(entry)}
-                />
-              ))}
+              <text
+                x={40}
+                y={scale.y(tick)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                className={styles.axisText}
+              >
+                {tickLabel(tick)}
+              </text>
             </g>
           ))}
-        </g>
 
-        {hasHover && (
-          <line
-            x1={scale.x(hover)}
-            x2={scale.x(hover)}
-            y1={12}
-            y2={height - 26}
-            stroke="var(--axis)"
-            strokeWidth={1}
-          />
-        )}
-
-        {hasHover &&
-          paths.map((entry) => {
-            const value = entry.values[hover];
-            if (value === null || value === undefined) return null;
-            return (
-              <circle
-                key={entry.key}
-                cx={scale.x(hover)}
-                cy={scale.y(value)}
-                r={4.5}
-                fill={slotVar(entry)}
-                // A 2px ring in the surface colour keeps overlapping marks
-                // readable where two series cross.
-                stroke="var(--surface-1)"
-                strokeWidth={2}
+          {reference && (
+            <g>
+              <line
+                x1={46}
+                x2={width - 14}
+                y1={scale.y(reference.value)}
+                y2={scale.y(reference.value)}
+                stroke="var(--axis)"
+                strokeWidth={1}
+                strokeDasharray="4 4"
               />
-            );
-          })}
+              <text
+                x={width - 16}
+                y={scale.y(reference.value) - 5}
+                textAnchor="end"
+                className={styles.referenceText}
+              >
+                {reference.label}
+              </text>
+            </g>
+          )}
 
-        {axisLabels.map((label, index) =>
-          showLabel.has(index) ? (
-            <text
-              key={`${label}-${index}`}
-              x={scale.x(index)}
-              y={height - 8}
-              // The last label sits on the chart's right edge; centred, a long
-              // one runs off it.
-              textAnchor={index === labels.length - 1 ? "end" : "middle"}
-              className={styles.axisText}
-            >
-              {label}
-            </text>
-          ) : null,
-        )}
+          <g clipPath={`url(#${clipId})`}>
+            {paths.map((entry) => (
+              <g key={entry.key}>
+                {entry.area && (
+                  <path d={entry.area} fill={slotVar(entry)} opacity={0.14} />
+                )}
+                <path
+                  d={entry.line}
+                  fill="none"
+                  stroke={slotVar(entry)}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {entry.isolated.map((point) => (
+                  <circle
+                    key={point.x}
+                    cx={scale.x(point.x)}
+                    cy={scale.y(point.y!)}
+                    r={3}
+                    fill={slotVar(entry)}
+                  />
+                ))}
+              </g>
+            ))}
+          </g>
+
+          {hasHover && (
+            <line
+              x1={scale.x(hover)}
+              x2={scale.x(hover)}
+              y1={12}
+              y2={height - 26}
+              stroke="var(--axis)"
+              strokeWidth={1}
+            />
+          )}
+
+          {hasHover &&
+            paths.map((entry) => {
+              const value = entry.values[hover];
+              if (value === null || value === undefined) return null;
+              return (
+                <circle
+                  key={entry.key}
+                  cx={scale.x(hover)}
+                  cy={scale.y(value)}
+                  r={4.5}
+                  fill={slotVar(entry)}
+                  // A 2px ring in the surface colour keeps overlapping marks
+                  // readable where two series cross.
+                  stroke="var(--surface-1)"
+                  strokeWidth={2}
+                />
+              );
+            })}
+
+          {axisLabels.map((label, index) =>
+            showLabel.has(index) ? (
+              <text
+                key={`${label}-${index}`}
+                x={scale.x(index)}
+                y={height - 8}
+                // The last label sits on the chart's right edge; centred, a long
+                // one runs off it.
+                textAnchor={index === labels.length - 1 ? "end" : "middle"}
+                className={styles.axisText}
+              >
+                {label}
+              </text>
+            ) : null,
+          )}
+        </g>
       </svg>
 
       {yLabel && <span className={styles.yLabel}>{yLabel}</span>}
@@ -273,6 +334,13 @@ export default function LineChart({
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>
+          {markers
+            .filter((marker) => marker.index === hover)
+            .map((marker) => (
+              <div key={marker.label} className={styles.tooltipNote}>
+                {marker.label}
+              </div>
+            ))}
           {paths.map((entry) => {
             const value = entry.values[hover];
             return (

@@ -225,6 +225,17 @@ export async function listRunJobs(repo, runId) {
   return body.jobs || [];
 }
 
+// One attempt's jobs. `listRunJobs` answers with the latest attempt only, so
+// whatever an earlier attempt ran - every job that succeeded before somebody
+// clicked re-run - is only reachable this way.
+export async function listAttemptJobs(repo, runId, attempt) {
+  const body = await api(
+    `https://api.github.com/repos/${repo}/actions/runs/${runId}/attempts/${attempt}/jobs?per_page=100`,
+    `${repo} run ${runId} attempt ${attempt} jobs`,
+  );
+  return body.jobs || [];
+}
+
 export async function writeJson(file, value) {
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, JSON.stringify(value));
