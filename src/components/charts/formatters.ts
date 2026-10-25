@@ -17,9 +17,10 @@
 //     1.7h, 2.2h", changing unit halfway up its own axis. The unit is chosen
 //     once from the largest tick and held for all of them.
 
-import { compactCount, count, money, percent } from "@/lib/format";
+import { bytes, compactCount, count, money, percent } from "@/lib/format";
 
-export type FormatKey = "money" | "percent" | "count" | "duration" | "compact";
+export type FormatKey =
+  "money" | "percent" | "count" | "duration" | "compact" | "bytes";
 
 // How many decimals a step needs before consecutive ticks stop colliding.
 function decimalsFor(step: number, scale = 1): number {
@@ -35,6 +36,7 @@ export const VALUE_FORMAT: Record<FormatKey, (value: number) => string> = {
   count: (value) => count(Math.round(value)),
   duration: (value) => exactDuration(value),
   compact: (value) => compactCount(Math.round(value)),
+  bytes: (value) => bytes(value),
 };
 
 function exactDuration(ms: number): string {
@@ -72,6 +74,13 @@ export function tickFormatter(
       }
       const places = step < 1_800_000 ? 1 : 0;
       return (value) => `${(value / 3_600_000).toFixed(places)}h`;
+    }
+    case "bytes": {
+      // GB unless the whole axis sits below one, as an hour's usage can.
+      const [unit, divisor] = max >= 1e9 ? ["GB", 1e9] : ["MB", 1e6];
+      const places = decimalsFor(step, 1 / divisor);
+      return (value) =>
+        value === 0 ? "0" : `${(value / divisor).toFixed(places)} ${unit}`;
     }
     case "count":
     case "compact":

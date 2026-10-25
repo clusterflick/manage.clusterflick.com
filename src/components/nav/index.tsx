@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/llm-usage", label: "LLM usage" },
   { href: "/pipeline", label: "Pipeline" },
   { href: "/venues", label: "Venues" },
+  { href: "/bandwidth", label: "Bandwidth" },
 ];
 
 export default function Nav() {

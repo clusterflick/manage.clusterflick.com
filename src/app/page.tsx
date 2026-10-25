@@ -9,7 +9,9 @@ import Sparkline from "@/components/charts/sparkline";
 import { overview } from "@/lib/reports";
 import { cacheStatus, failureStatus, rateStatus } from "@/lib/status";
 import {
+  bytes,
   count,
+  dateLabel,
   dateTimeLabel,
   duration,
   money,
@@ -19,7 +21,7 @@ import {
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
-  const { catalogue, llm, pipeline, health } = overview;
+  const { catalogue, llm, pipeline, health, bandwidth } = overview;
   const builtAt = new Date(overview.fetchedAt);
 
   const unassisted = pipeline.workflows.filter(
@@ -239,6 +241,70 @@ export default function OverviewPage() {
                 href={`/pipeline#${worstUnassisted.key}`}
               />
             )}
+          </StatGrid>
+        </>
+      )}
+
+      {bandwidth && (
+        <>
+          <h2 className={styles.sectionHeading}>Bandwidth</h2>
+          <StatGrid>
+            <StatTile
+              label={
+                bandwidth.latestComplete
+                  ? `Used on ${dateLabel(`${bandwidth.latestComplete.date}T12:00:00Z`)}`
+                  : "Latest full day"
+              }
+              value={bytes(bandwidth.latestComplete?.bytes)}
+              detail={`Mean ${bytes(bandwidth.meanPerDay)}/day over the window`}
+              href="/bandwidth"
+            />
+            <StatTile
+              label="This cycle so far"
+              value={bytes(bandwidth.cycle.soFar)}
+              detail={`Day ${bandwidth.cycle.elapsed} of ${bandwidth.cycle.length} · ${bytes(bandwidth.cycle.projected)} projected`}
+              href="/bandwidth"
+            />
+            <StatTile
+              label="Latest router reading"
+              value={
+                bandwidth.latestReadingAt ? (
+                  <RelativeTime
+                    value={bandwidth.latestReadingAt}
+                    builtAt={builtAt.getTime()}
+                  />
+                ) : (
+                  "—"
+                )
+              }
+              detail="Read hourly. Days without a full set of readings fall back to Smarty's history."
+              severity={
+                bandwidth.latestReadingAt === null
+                  ? "warning"
+                  : builtAt.getTime() -
+                        new Date(bandwidth.latestReadingAt).getTime() >
+                      3 * 3600000
+                    ? "warning"
+                    : "good"
+              }
+              severityLabel={
+                bandwidth.latestReadingAt === null ? "none yet" : undefined
+              }
+              href="/bandwidth"
+            />
+            <div className={styles.sparkTile}>
+              <span className={styles.sparkLabel}>Daily usage</span>
+              <Sparkline
+                values={bandwidth.sparkline}
+                label={`Daily data usage over ${bandwidth.sparkline.length} days`}
+                width={170}
+                height={46}
+                showGaps={false}
+              />
+              <span className={styles.sparkDetail}>
+                {bandwidth.sparkline.length} days, the last a part day
+              </span>
+            </div>
           </StatGrid>
         </>
       )}

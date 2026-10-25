@@ -51,6 +51,18 @@ export function compactCount(value: number | null | undefined): string {
   return String(value);
 }
 
+// Data volumes, in decimal units - the ones Smarty bills in. One decimal place
+// is enough to compare days; GB is what nearly every figure here lands in.
+export function bytes(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  const magnitude = Math.abs(value);
+  if (magnitude >= 1e12) return `${(value / 1e12).toFixed(2)} TB`;
+  if (magnitude >= 1e9) return `${(value / 1e9).toFixed(1)} GB`;
+  if (magnitude >= 1e6) return `${(value / 1e6).toFixed(0)} MB`;
+  if (magnitude >= 1e3) return `${(value / 1e3).toFixed(0)} KB`;
+  return `${Math.round(value)} B`;
+}
+
 // Everything the pipeline does is on London time, and a date rendered in the
 // viewer's zone would disagree with the release tags it came from.
 const LONDON = "Europe/London";
