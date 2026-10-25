@@ -12,6 +12,13 @@
 //   - Smarty's own daily history, imported by hand. It covers the days before
 //     the readings started, and any day they don't cover in full.
 //
+// A day neither covers in full - the day the readings start, or one Smarty was
+// imported partway through - is the two added together: Smarty's figure as
+// imported, then what the router counted after the import. Smarty's part-day
+// figure lags real usage by some hours, so the join can only miss usage, never
+// count it twice; importing Smarty again once the day is over replaces the
+// join with Smarty's full count.
+//
 // An interval that spans midnight is split between the two days in proportion
 // to the time on each side. Readings are hourly, so that is a guess about one
 // hour at most - unless the runners were too busy to take one, which the
@@ -89,6 +96,21 @@ function routerDays(intervals) {
   return days;
 }
 
+// What the router counted between two instants, taking each interval's usage
+// in proportion to how much of it falls inside - the same split routerDays
+// makes at midnight.
+function usageBetween(intervals, from, to) {
+  const usage = { down: 0, up: 0 };
+  for (const interval of intervals) {
+    const span = interval.to - interval.from;
+    const overlap = Math.min(interval.to, to) - Math.max(interval.from, from);
+    if (span <= 0 || overlap <= 0) continue;
+    usage.down += (interval.down * overlap) / span;
+    usage.up += (interval.up * overlap) / span;
+  }
+  return usage;
+}
+
 // Smarty's billing cycle containing `date`: from the cycle's start day of the
 // month to the day before it, a month on.
 function cycleContaining(date, startDay) {
@@ -141,17 +163,41 @@ export default function buildBandwidthReport(
     const routerIsComplete = Boolean(router) && routerComplete(date);
     const fromSmarty = smartyDays[date] ?? null;
 
+    // Smarty's part day, then the router from the import to the day's end.
+    // Only when the router has readings after the import - otherwise there is
+    // nothing to add. Complete when the readings run from at or before the
+    // import to past midnight.
+    const dayEnd = londonMidnight(nextDay(date));
+    const importedAt =
+      fromSmarty && !fromSmarty.complete && fromSmarty.importedAt
+        ? Math.max(Date.parse(fromSmarty.importedAt), londonMidnight(date))
+        : null;
+    const joined =
+      importedAt !== null && lastReading !== null && lastReading > importedAt
+        ? {
+            ...usageBetween(intervals, importedAt, dayEnd),
+            complete: firstReading <= importedAt && lastReading >= dayEnd,
+          }
+        : null;
+
     // A complete count beats a partial one, and the router's beats Smarty's
     // when both are complete - it is the one with the split, and the series
-    // going forward. Between two partial counts (today, usually), the larger
-    // has seen more of the day: both can only be short.
+    // going forward. A day split between them is the two joined. Between two
+    // partial counts that can't be joined, the larger has seen more of the
+    // day: both can only be short.
     let source = null;
     if (routerIsComplete) source = "router";
     else if (fromSmarty?.complete) source = "smarty";
+    else if (joined) source = "joined";
     else if (router && fromSmarty)
       source = routerBytes >= fromSmarty.bytes ? "router" : "smarty";
     else if (router) source = "router";
     else if (fromSmarty) source = "smarty";
+
+    // The router's share of the day: all of it on a router day, what came
+    // after the import on a joined one.
+    const routerPart =
+      source === "router" ? router : source === "joined" ? joined : null;
 
     return {
       date,
@@ -161,15 +207,22 @@ export default function buildBandwidthReport(
           ? routerBytes
           : source === "smarty"
             ? fromSmarty.bytes
-            : null,
+            : source === "joined"
+              ? Math.round(fromSmarty.bytes + joined.down + joined.up)
+              : null,
       complete:
         source === "router"
           ? routerIsComplete
           : source === "smarty"
             ? fromSmarty.complete
-            : false,
-      down: source === "router" ? Math.round(router.down) : null,
-      up: source === "router" ? Math.round(router.up) : null,
+            : source === "joined"
+              ? joined.complete
+              : false,
+      down: routerPart ? Math.round(routerPart.down) : null,
+      up: routerPart ? Math.round(routerPart.up) : null,
+      // Smarty's share of a joined day, as imported.
+      smartyPart: source === "joined" ? fromSmarty.bytes : null,
+      importedAt: source === "joined" ? fromSmarty.importedAt : null,
       resets: router?.resets ?? 0,
       // Both figures for a day both sources have in full, so the two can be
       // checked against each other.

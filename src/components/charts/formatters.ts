@@ -78,7 +78,10 @@ export function tickFormatter(
     case "bytes": {
       // GB unless the whole axis sits below one, as an hour's usage can.
       const [unit, divisor] = max >= 1e9 ? ["GB", 1e9] : ["MB", 1e6];
-      const places = decimalsFor(step, 1 / divisor);
+      // As many decimals as the step has in that unit, so a 2.5 MB step
+      // doesn't print as "3 MB, 5 MB, 8 MB".
+      const scaled = Number((step / divisor).toFixed(2));
+      const places = (String(scaled).split(".")[1] ?? "").length;
       return (value) =>
         value === 0 ? "0" : `${(value / divisor).toFixed(places)} ${unit}`;
     }

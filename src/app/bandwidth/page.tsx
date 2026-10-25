@@ -19,7 +19,11 @@ export const metadata = { title: "Bandwidth — Clusterflick manage" };
 
 const dayLabel = (date: string) => dateLabel(`${date}T12:00:00Z`);
 
-const SOURCE_LABEL = { router: "Router", smarty: "Smarty" } as const;
+const SOURCE_LABEL = {
+  router: "Router",
+  smarty: "Smarty",
+  joined: "Smarty, then router",
+} as const;
 
 function dayNotes(day: BandwidthDay): string[] {
   const notes = [];
@@ -43,12 +47,22 @@ export default function BandwidthPage() {
   const builtAt = new Date(bandwidth.generatedAt).getTime();
   const labels = days.map((day) => dayLabel(day.date));
 
+  // On a joined day the router's part is only what came after the Smarty
+  // import, and Smarty's part sits beneath it in the same bar.
   const fromRouter = (day: BandwidthDay, field: "down" | "up") =>
-    day.source === "router" ? (day[field] ?? 0) : 0;
+    day.source === "router" || day.source === "joined" ? (day[field] ?? 0) : 0;
+  const fromSmarty = (day: BandwidthDay) =>
+    day.source === "smarty"
+      ? (day.bytes ?? 0)
+      : day.source === "joined"
+        ? (day.smartyPart ?? 0)
+        : 0;
 
   // Where the router takes over from Smarty, so the change in colour reads as
   // a change of source rather than of usage.
-  const firstRouterDay = days.findIndex((day) => day.source === "router");
+  const firstRouterDay = days.findIndex(
+    (day) => day.source === "router" || day.source === "joined",
+  );
   const sourceMarkers =
     firstRouterDay > 0 &&
     days.slice(0, firstRouterDay).some((day) => day.source === "smarty")
@@ -74,7 +88,8 @@ export default function BandwidthPage() {
             last {bandwidth.window.days} days.{" "}
             {router ? (
               <>
-                {count(router.readings)} router readings since{" "}
+                {count(router.readings)} router{" "}
+                {router.readings === 1 ? "reading" : "readings"} since{" "}
                 {dateTimeLabel(router.firstAt)}, the latest{" "}
                 <RelativeTime value={router.latestAt} builtAt={builtAt} />.
               </>
@@ -105,7 +120,9 @@ export default function BandwidthPage() {
             latestComplete
               ? latestComplete.source === "router"
                 ? `${bytes(latestComplete.down)} down · ${bytes(latestComplete.up)} up, from the router`
-                : "From Smarty's history"
+                : latestComplete.source === "joined"
+                  ? `${bytes(latestComplete.smartyPart)} from Smarty to ${timeLabel(latestComplete.importedAt)}, then ${bytes((latestComplete.down ?? 0) + (latestComplete.up ?? 0))} from the router`
+                  : "From Smarty's history"
               : "No full day counted yet"
           }
         />
@@ -128,7 +145,7 @@ export default function BandwidthPage() {
 
       <Panel
         title="Usage per day"
-        note="Router days are split into download and upload; Smarty only reports a day's total. A day counts from the router when its hourly readings cover all of it, and falls back to Smarty otherwise. Today, and any day the readings only partly cover, is a part day and short of its eventual total."
+        note="Router days are split into download and upload; Smarty only reports a day's total. A day counts from the router when its hourly readings cover all of it, and falls back to Smarty otherwise. A day Smarty was imported partway through is Smarty's figure up to the import with the router's on top - which can run a little short, as Smarty's part-day figure lags; importing Smarty again once the day is over replaces it with Smarty's full count. Today, and any day neither covers in full, is a part day and short of its eventual total."
       >
         <StackedBars
           series={[
@@ -148,9 +165,7 @@ export default function BandwidthPage() {
               key: "smarty",
               label: "Total (Smarty)",
               slot: 3,
-              values: days.map((day) =>
-                day.source === "smarty" ? (day.bytes ?? 0) : 0,
-              ),
+              values: days.map(fromSmarty),
             },
           ]}
           labels={labels}
@@ -261,7 +276,11 @@ export default function BandwidthPage() {
                   <td className={`${styles.right} ${styles.strong}`}>
                     {bytes(day.bytes)}
                   </td>
-                  <td className={styles.right}>{bytes(day.smartyBytes)}</td>
+                  {/* A joined day shows Smarty's part, so the row reads as
+                      the sum it is. */}
+                  <td className={styles.right}>
+                    {bytes(day.smartyBytes ?? day.smartyPart)}
+                  </td>
                   <td className={styles.right}>
                     {day.routerBytes !== null && day.smartyBytes
                       ? signedPercent(day.routerBytes / day.smartyBytes - 1)

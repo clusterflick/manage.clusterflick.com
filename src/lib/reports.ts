@@ -577,15 +577,20 @@ export type OverviewReport = {
 };
 
 // One London day of data usage, from whichever source counted it best: the
-// router when its readings cover the whole day, Smarty otherwise. `down` and
-// `up` are only known from the router.
+// router when its readings cover the whole day, Smarty otherwise, or the two
+// joined at a Smarty import made partway through the day. `down` and `up` are
+// only known from the router.
 export type BandwidthDay = {
   date: string;
-  source: "router" | "smarty" | null;
+  source: "router" | "smarty" | "joined" | null;
   bytes: number | null;
   complete: boolean;
   down: number | null;
   up: number | null;
+  // A joined day: Smarty's figure as imported, and when it was imported. The
+  // router's part, after the import, is `down` and `up`.
+  smartyPart: number | null;
+  importedAt: string | null;
   resets: number;
   routerBytes: number | null;
   smartyBytes: number | null;
