@@ -11,6 +11,7 @@ import catalogueJson from "@/generated/catalogue.json";
 import llmJson from "@/generated/llm.json";
 import pipelineJson from "@/generated/pipeline.json";
 import healthJson from "@/generated/health.json";
+import bandwidthJson from "@/generated/bandwidth.json";
 
 export type ReleaseInfo = {
   tag: string;
@@ -559,7 +560,83 @@ export type OverviewReport = {
     failureRate: number;
     failingNow: string[];
   } | null;
+  bandwidth: {
+    latestComplete: { date: string; bytes: number } | null;
+    meanPerDay: number | null;
+    cycle: {
+      start: string;
+      end: string;
+      soFar: number;
+      projected: number | null;
+      elapsed: number;
+      length: number;
+    };
+    sparkline: (number | null)[];
+    latestReadingAt: string | null;
+  } | null;
 };
+
+// One London day of data usage, from whichever source counted it best: the
+// router when its readings cover the whole day, Smarty otherwise. `down` and
+// `up` are only known from the router.
+export type BandwidthDay = {
+  date: string;
+  source: "router" | "smarty" | null;
+  bytes: number | null;
+  complete: boolean;
+  down: number | null;
+  up: number | null;
+  resets: number;
+  routerBytes: number | null;
+  smartyBytes: number | null;
+};
+
+export type BandwidthInterval = {
+  at: string;
+  minutes: number;
+  down: number;
+  up: number;
+  reset: boolean;
+};
+
+export type BandwidthReport =
+  | { empty: true }
+  | {
+      empty: false;
+      generatedAt: string;
+      window: { days: number; firstDate: string; lastDate: string };
+      days: BandwidthDay[];
+      perDay: {
+        mean: number | null;
+        max: number | null;
+        completeDays: number;
+      };
+      latestComplete: BandwidthDay | null;
+      cycle: {
+        start: string;
+        end: string;
+        startDay: number;
+        fromSmarty: boolean;
+        length: number;
+        elapsed: number;
+        soFar: number;
+        projected: number | null;
+      };
+      agreement: { days: number; difference: number } | null;
+      router: {
+        readings: number;
+        firstAt: string;
+        latestAt: string;
+        resetDay: number | null;
+        autoReset: boolean | null;
+        recent: BandwidthInterval[];
+      } | null;
+      smarty: {
+        updatedAt: string;
+        cycleStart: string;
+        firstDate: string | null;
+      } | null;
+    };
 
 // The generated JSON is the shape these builders write; the assertion is where
 // that contract is stated, and the builders are the only thing that can break it.
@@ -568,3 +645,4 @@ export const catalogue = catalogueJson as unknown as CatalogueReport;
 export const llm = llmJson as unknown as LlmReport;
 export const pipeline = pipelineJson as unknown as PipelineReport;
 export const health = healthJson as unknown as HealthReport;
+export const bandwidth = bandwidthJson as unknown as BandwidthReport;

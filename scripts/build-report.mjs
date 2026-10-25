@@ -18,13 +18,17 @@ import buildPipelineReport from "./lib/report-pipeline.mjs";
 import buildHealthReport from "./lib/report-health.mjs";
 import buildNormaliserReport from "./lib/report-normaliser.mjs";
 import buildFlappingReport from "./lib/report-flapping.mjs";
+import buildBandwidthReport from "./lib/report-bandwidth.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
 
 const source = (...parts) => path.join(SOURCE, ...parts);
 
-function buildOverview({ catalogue, llm, pipeline, health }, fetchedAt) {
+function buildOverview(
+  { catalogue, llm, pipeline, health, bandwidth },
+  fetchedAt,
+) {
   return {
     fetchedAt,
     dataGeneratedAt: catalogue.generatedAt,
@@ -72,6 +76,27 @@ function buildOverview({ catalogue, llm, pipeline, health }, fetchedAt) {
           probes: health.window.probes,
           failureRate: health.totals.failureRate,
           failingNow: health.totals.failingNow,
+        },
+    bandwidth: bandwidth.empty
+      ? null
+      : {
+          latestComplete: bandwidth.latestComplete
+            ? {
+                date: bandwidth.latestComplete.date,
+                bytes: bandwidth.latestComplete.bytes,
+              }
+            : null,
+          meanPerDay: bandwidth.perDay.mean,
+          cycle: {
+            start: bandwidth.cycle.start,
+            end: bandwidth.cycle.end,
+            soFar: bandwidth.cycle.soFar,
+            projected: bandwidth.cycle.projected,
+            elapsed: bandwidth.cycle.elapsed,
+            length: bandwidth.cycle.length,
+          },
+          sparkline: bandwidth.days.map((day) => day.bytes),
+          latestReadingAt: bandwidth.router?.latestAt ?? null,
         },
   };
 }
@@ -177,8 +202,17 @@ async function main() {
       : `· venue health — ${health.window.probes} probes across ${health.window.venues} venues`,
   );
 
+  const bandwidth = buildBandwidthReport(
+    await readJson(source("bandwidth.json")),
+  );
+  console.log(
+    bandwidth.empty
+      ? "· bandwidth — no readings or Smarty days"
+      : `· bandwidth — ${bandwidth.router?.readings ?? 0} router readings, ${bandwidth.perDay.completeDays} complete days in the window`,
+  );
+
   const overview = buildOverview(
-    { catalogue, llm, pipeline, health },
+    { catalogue, llm, pipeline, health, bandwidth },
     fetchedAt,
   );
 
@@ -188,6 +222,7 @@ async function main() {
     llm,
     pipeline,
     health,
+    bandwidth,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
     const { size } = await readFile(file).then((buffer) => ({

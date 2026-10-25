@@ -1,6 +1,6 @@
 # manage.clusterflick.com
 
-An internal review site for the Clusterflick pipeline. It answers four questions
+An internal review site for the Clusterflick pipeline. It answers five questions
 in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
@@ -8,6 +8,8 @@ in one place:
 - **LLM usage** — what the transform pipeline spends on the LLM, and where it goes.
 - **Pipeline** — how reliably retrieve, transform, match and the rest actually run.
 - **Venues** — which sources have stopped answering, and why.
+- **Bandwidth** — how much data the self-hosted runners use on the 5G router,
+  day by day and against the billing cycle.
 
 The overview page puts the headline figure from each on one screen.
 
@@ -22,11 +24,11 @@ npm run prepare-data   # fetch-source-data + build-report
 npm run dev
 ```
 
-| Step                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                   |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs and daily venue health logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
-| `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                               |
-| `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                    |
+| Step                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs, daily venue health logs and monthly bandwidth logs (with the Smarty seed) from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
+| `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                                                                              |
+| `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 Both directories are git-ignored — the reports are derived, and regenerating them
 is a command rather than a commit. `prepare-data` must run before `build`, `dev`
@@ -40,6 +42,7 @@ Useful environment variables for the fetch step:
 | `SKIP_EXISTING`                     | `false` | Reuse anything already in `./source-data`. What you want while working on the reports themselves.                         |
 | `HEALTH_DAYS`                       | `14`    | How many daily venue-health releases to pull.                                                                             |
 | `LLM_MONTHS`                        | `6`     | How many monthly LLM usage releases to pull.                                                                              |
+| `BANDWIDTH_MONTHS`                  | `3`     | How many monthly bandwidth releases (hourly router readings) to pull.                                                     |
 | `RUN_WINDOW_DAYS`                   | `30`    | How far back to read workflow runs.                                                                                       |
 | `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
 

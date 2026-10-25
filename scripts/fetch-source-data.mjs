@@ -13,6 +13,7 @@
 //                                   it just runs out of budget sooner.
 //   HEALTH_DAYS  - how many daily venue-health releases to pull (default 14)
 //   LLM_MONTHS   - how many monthly LLM usage releases to pull (default 6)
+//   BANDWIDTH_MONTHS - how many monthly bandwidth releases to pull (default 3)
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
 //   FLAP_RELEASES - how many data-combined releases to compare for flapping
 //                   (default 30, about ten days)
@@ -49,6 +50,7 @@ import {
 const OUT = path.join(process.cwd(), "source-data");
 const HEALTH_DAYS = Number(process.env.HEALTH_DAYS || 14);
 const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
+const BANDWIDTH_MONTHS = Number(process.env.BANDWIDTH_MONTHS || 3);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
 const FLAP_RELEASES = Number(process.env.FLAP_RELEASES || 30);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
@@ -258,6 +260,59 @@ async function fetchLlmUsage() {
     );
     await writeJson(path.join(OUT, "llm-usage.json"), ordered);
     return `${ordered.length} runs across ${months.length} months`;
+  });
+}
+
+// Data usage on the 5G router the self-hosted runners share. Two sources: the
+// router's own counters, read hourly into one release per month tagged
+// bandwidth-YYYYMM, and Smarty's daily history, imported by hand onto the
+// bandwidth-smarty release to cover the days before the readings started.
+// Smarty's is looked up by tag rather than found in the release list: it is
+// created once, and the daily venue-health releases push it off the first page
+// within a few months.
+async function fetchBandwidth() {
+  await step("bandwidth log", path.join(OUT, "bandwidth.json"), async () => {
+    const releases = await listReleases("clusterflick/data-analysed");
+    const months = releases
+      .filter((release) => /^bandwidth-\d{6}$/.test(release.tag_name))
+      .sort((a, b) => a.tag_name.localeCompare(b.tag_name))
+      .slice(-BANDWIDTH_MONTHS);
+
+    const readings = [];
+    for (const release of months) {
+      const asset = release.assets.find(
+        (a) => a.name === "bandwidth-log.jsonl",
+      );
+      if (!asset) continue;
+      const file = path.join(OUT, "bandwidth", `${release.tag_name}.jsonl`);
+      await downloadAsset(asset, file);
+      readings.push(
+        ...parseJsonl(await readFile(file, "utf8"), release.tag_name),
+      );
+    }
+    readings.sort((a, b) => a.at.localeCompare(b.at));
+
+    let smarty = null;
+    try {
+      const release = await api(
+        "https://api.github.com/repos/clusterflick/data-analysed/releases/tags/bandwidth-smarty",
+        "bandwidth-smarty release",
+      );
+      const asset = release.assets.find((a) => a.name === "smarty-usage.json");
+      if (asset) {
+        const file = path.join(OUT, "bandwidth", asset.name);
+        await downloadAsset(asset, file);
+        smarty = await readJson(file);
+      }
+    } catch (error) {
+      // Not imported yet is a page with only router days on it, not a failed
+      // build. Anything other than a missing release still fails.
+      if (!/ 404 /.test(error.message)) throw error;
+    }
+
+    await writeJson(path.join(OUT, "bandwidth.json"), { readings, smarty });
+    const smartyDays = smarty ? Object.keys(smarty.days).length : 0;
+    return `${readings.length} router readings across ${months.length} months, ${smartyDays} Smarty days`;
   });
 }
 
@@ -680,6 +735,7 @@ async function main() {
   await fetchLlmUsage();
   await fetchLlmVenueUsage();
   await fetchVenueHealth();
+  await fetchBandwidth();
   await fetchWorkflowRuns();
   await writeFile(
     path.join(OUT, "fetched-at.json"),
