@@ -57,7 +57,10 @@ export default function BandwidthPage() {
 
   // Only a router that clears its counter on a schedule has a month to line
   // up. With automatic clearing off, the counter only drops on a restart.
-  const autoResets = router?.autoReset === true && Boolean(router.resetDay);
+  // The router doesn't always report the switch, and one that gives a reset
+  // day without it is taken at its word - only an explicit "off" says it
+  // never clears.
+  const autoResets = router?.autoReset !== false && Boolean(router?.resetDay);
   const resetDayMismatch =
     autoResets && cycle.fromSmarty && router?.resetDay !== cycle.startDay;
 
@@ -199,7 +202,7 @@ export default function BandwidthPage() {
         </Panel>
       )}
 
-      {resetDayMismatch && (
+      {router && resetDayMismatch && (
         <Panel title="Router month doesn't match the billing cycle">
           <p className={styles.note}>
             The router resets its counter on day {router.resetDay} of the month,
