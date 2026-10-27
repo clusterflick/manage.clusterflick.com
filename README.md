@@ -12,8 +12,10 @@ in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
   matches are missing, and which listings flap from one run to the next.
-- **LLM usage** — what the transform pipeline spends on the LLM, and where it goes.
-- **Pipeline** — how reliably retrieve, transform, match and the rest actually run.
+- **LLM usage** — what the transform pipeline spends on the LLM, and where it
+  goes.
+- **Pipeline** — how reliably retrieve, transform, match and the rest actually
+  run.
 - **Venues** — which sources have stopped answering, and why.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
   day by day and against the billing cycle, with Retrieve's runs shaded on the
@@ -38,9 +40,9 @@ npm run dev
 | `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                                                                              |
 | `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
-Both directories are git-ignored — the reports are derived, and regenerating them
-is a command rather than a commit. `prepare-data` must run before `build`, `dev`
-or `lint`, because the pages import the generated JSON directly.
+Both directories are git-ignored — the reports are derived, and regenerating
+them is a command rather than a commit. `prepare-data` must run before `build`,
+`dev` or `lint`, because the pages import the generated JSON directly.
 
 Useful environment variables for the fetch step:
 
@@ -59,11 +61,11 @@ Useful environment variables for the fetch step:
 `generate_site.yml` builds and deploys to GitHub Pages on a `release_event`
 dispatch, on a `venue_health` dispatch sent by `data-analysed` after each hourly
 health cycle, on every push to `main`, and nightly. The nightly run matters: the
-run history, the usage log and the health log all move on their own schedules, so
-a site that only rebuilt on a data release would show a stale pipeline page on
-exactly the day the pipeline was too broken to publish one. The push trigger is
-what publishes a change to the site itself — the data dispatch only fires when
-the data moves, so without it a merge waited for the next nightly run.
+run history, the usage log and the health log all move on their own schedules,
+so a site that only rebuilt on a data release would show a stale pipeline page
+on exactly the day the pipeline was too broken to publish one. The push trigger
+is what publishes a change to the site itself — the data dispatch only fires
+when the data moves, so without it a merge waited for the next nightly run.
 
 Job timings for finished runs are kept in `./.cache` between builds (restored by
 `actions/cache` in CI), so an hourly rebuild looks up only the runs it has not
@@ -72,9 +74,9 @@ seen rather than making ~600 jobs calls against the token's rate limit.
 Flapping is found by following each venue listing through the recent
 `data-combined` releases. Each release is around 20MB, and all that matters here
 is which film every listing sat under and when its last performance is, so each
-is reduced to that (around 850KB)
-and kept in `./.cache/combined-history` by tag. Releases never change once
-published, so a rebuild downloads only the ones it hasn't seen.
+is reduced to that (around 850KB) and kept in `./.cache/combined-history` by
+tag. Releases never change once published, so a rebuild downloads only the ones
+it hasn't seen.
 
 The per-venue LLM breakdown comes from workflow artifacts, which need a token to
 download and expire after a fortnight. Without one, the LLM page says so in
@@ -89,16 +91,17 @@ the pages that carry them say so too:
   into its parts as a match. 454 of 1,840 entries carry `isUnmatched`, but most
   are shorts programmes, Q&As, quiz nights and gigs — listings with no film to
   match to. And `isUnmatched` is not the same as unmatched: a double bill has no
-  single film to resolve to, so the wrapper carries the flag while the match sits
-  in `includedMovies`, a list of fully resolved films with their own TMDB ids and
-  posters. 106 listings are matched that way. Reading the flag alone gives 91.7%;
-  counting properly gives **94.8%**, with **79** genuine misses rather than 126.
+  single film to resolve to, so the wrapper carries the flag while the match
+  sits in `includedMovies`, a list of fully resolved films with their own TMDB
+  ids and posters. 106 listings are matched that way. Reading the flag alone
+  gives 91.7%; counting properly gives **94.8%**, with **79** genuine misses
+  rather than 126.
 - **Run duration** is execution time across the jobs that actually ran, not
   `updated_at - run_started_at`. That subtraction includes time queued for a
   runner — one `data-diffed` run waited 53 minutes and then built in 2m20s, and
   GitHub's own `run_duration_ms` calls that a 55-minute run. Queue wait is
-  reported alongside, because runner contention is worth seeing; it just is not a
-  fact about the build.
+  reported alongside, because runner contention is worth seeing; it just is not
+  a fact about the build.
 - **Unassisted run rate** is only meaningful for retrieve, transform and match.
   Those three have no auto-rerun workflow, so `run_attempt > 1` can only mean a
   person clicked re-run. The rest carry a rerun-on-failure workflow or
@@ -122,7 +125,8 @@ the pages are followed to `total_count` rather than to the first short page, and
 the status is filtered here off a field every run already carries. A flow that
 still comes back empty is reported as missing rather than as zero — every flow
 here runs at least daily, so an empty window is the history failing to arrive.
-See [community discussion #24626](https://github.com/orgs/community/discussions/24626).
+See
+[community discussion #24626](https://github.com/orgs/community/discussions/24626).
 
 `match` runs are also filtered: the flow is dispatched by every `data-combined`
 release but only builds once a day, and the runs where its opening guard skipped
@@ -132,7 +136,7 @@ hours.
 
 ## Related
 
-The badges in `clusterflick/data-analysed` are generated from the same GitHub API
-and the same reasoning (`scripts/workflow-run-stats.js`, `scripts/append-llm-usage-log.js`,
-`scripts/analyse-health-log.js`). This site is where the runs behind a badge can
-actually be looked at.
+The badges in `clusterflick/data-analysed` are generated from the same GitHub
+API and the same reasoning (`scripts/workflow-run-stats.js`,
+`scripts/append-llm-usage-log.js`, `scripts/analyse-health-log.js`). This site
+is where the runs behind a badge can actually be looked at.
