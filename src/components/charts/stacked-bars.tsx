@@ -30,6 +30,17 @@ export type StackMarker = {
   label: string;
 };
 
+// A span of time shaded behind the bars, for something that was going on
+// while they were counted - a job running while the bandwidth was used.
+// `start` and `end` are in bars, 0 being the left edge of the first, so a band
+// can begin partway through one. `label` is what the tooltip says over a bar
+// the band touches; `legend` names every band at once.
+export type StackBand = {
+  start: number;
+  end: number;
+  label: string;
+};
+
 type Props = {
   series: StackSeries[];
   labels: string[];
@@ -37,6 +48,8 @@ type Props = {
   format: FormatKey;
   overlay?: StackOverlay;
   markers?: StackMarker[];
+  bands?: StackBand[];
+  bandLegend?: string;
 };
 
 // A stacked bar per label. Only ever used where the parts genuinely sum to a
@@ -59,6 +72,8 @@ export default function StackedBars({
   format,
   overlay,
   markers = [],
+  bands = [],
+  bandLegend,
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const width = 720;
@@ -196,6 +211,19 @@ export default function StackedBars({
           </g>
         ))}
 
+        {/* Behind the bars, so a bar inside a band reads as part of it. */}
+        {bands.map((band) => (
+          <rect
+            key={`band-${band.start}-${band.end}`}
+            x={padding.left + band.start * slotWidth}
+            y={padding.top}
+            width={Math.max((band.end - band.start) * slotWidth, 1)}
+            height={innerHeight}
+            className={styles.band}
+            pointerEvents="none"
+          />
+        ))}
+
         {labels.map((label, index) => {
           let cursor = 0;
           return (
@@ -324,6 +352,16 @@ export default function StackedBars({
                 {marker.label}
               </div>
             ))}
+          {bands
+            .filter((band) => band.start < hover + 1 && band.end > hover)
+            .map((band) => (
+              <div
+                key={`band-${band.start}-${band.end}`}
+                className={styles.tooltipNote}
+              >
+                {band.label}
+              </div>
+            ))}
           {series
             .map((entry) => ({ entry, value: entry.values[hover] ?? 0 }))
             .filter(({ value }) => value > 0)
@@ -382,6 +420,15 @@ export default function StackedBars({
             {entry.label}
           </li>
         ))}
+        {bandLegend && bands.length > 0 && (
+          <li className={styles.legendItem}>
+            <span
+              className={`${styles.swatch} ${styles.bandSwatch}`}
+              aria-hidden="true"
+            />
+            {bandLegend} (shaded)
+          </li>
+        )}
         {overlay && (
           <li className={styles.legendItem}>
             <span

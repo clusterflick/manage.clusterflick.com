@@ -25,6 +25,7 @@
 // proportional split degrades gracefully across rather than dumping a whole
 // gap onto whichever day the late reading landed on.
 
+import { runnerGroup } from "./report-pipeline.mjs";
 import { londonDay, mean, round, sum } from "./stats.mjs";
 
 export const WINDOW_DAYS = 30;
@@ -111,6 +112,57 @@ function usageBetween(intervals, from, to) {
   return usage;
 }
 
+// Jobs on the self-hosted runners less than this far apart are one stretch of
+// retrieving. A job queued behind a busy runner starts a few minutes after the
+// one before it finished, and splitting the band there would draw a gap with
+// nothing in it.
+const RETRIEVE_GAP_MS = 5 * 60000;
+
+// When Retrieve was pulling data through the router: the stretches its
+// self-hosted jobs ran, from every attempt of every run. GitHub-hosted jobs are
+// left out - they don't go through the router. Taken from the jobs rather than
+// the run, because a run's `run_started_at` moves to its latest attempt and its
+// `updated_at` takes in the hours waiting for someone to click re-run, when
+// nothing was downloading.
+//
+// Only successful jobs are kept with the run timings (see `jobDurations` in
+// fetch-source-data.mjs), so a job that failed and was re-run is drawn at its
+// re-run alone. That can only leave a stretch short, never add one.
+function retrieveWindows(runs) {
+  const windows = [];
+  for (const run of runs) {
+    const spans = (run.jobs ?? [])
+      .filter((job) => runnerGroup(job.runner) !== "github-hosted")
+      .map((job) => {
+        const from = Date.parse(job.startedAt);
+        return { from, to: from + job.ms };
+      })
+      .sort((a, b) => a.from - b.from);
+    let current = null;
+    for (const span of spans) {
+      if (current && span.from <= current.to + RETRIEVE_GAP_MS) {
+        current.to = Math.max(current.to, span.to);
+      } else {
+        current = { ...span, url: run.url };
+        windows.push(current);
+      }
+    }
+  }
+  return windows.sort((a, b) => a.from - b.from);
+}
+
+// Where an instant falls along the hourly chart, in bars: 0 is the left edge
+// of the first, 1.5 halfway through the second. Each bar is its interval, so
+// an instant is placed by how far through its interval it falls.
+function slotPosition(intervals, at) {
+  if (at <= intervals[0].from) return 0;
+  for (let index = 0; index < intervals.length; index += 1) {
+    const { from, to } = intervals[index];
+    if (at <= to) return index + (to > from ? (at - from) / (to - from) : 1);
+  }
+  return intervals.length;
+}
+
 // Smarty's billing cycle containing `date`: from the cycle's start day of the
 // month to the day before it, a month on.
 function cycleContaining(date, startDay) {
@@ -130,7 +182,7 @@ const daysBetween = (from, to) =>
   ) + 1;
 
 export default function buildBandwidthReport(
-  { readings, smarty },
+  { readings, smarty, retrieveRuns = [] },
   now = Date.now(),
 ) {
   const smartyDays = smarty?.days ?? {};
@@ -263,6 +315,7 @@ export default function buildBandwidthReport(
   );
 
   const latest = readings.at(-1) ?? null;
+  const recent = intervals.slice(-RECENT_INTERVALS);
 
   return {
     empty: false,
@@ -312,13 +365,31 @@ export default function buildBandwidthReport(
           resetDay: latest.resetDay ?? null,
           autoReset: latest.autoReset ?? null,
           // The hour-by-hour view: what each interval between readings used.
-          recent: intervals.slice(-RECENT_INTERVALS).map((interval) => ({
+          recent: recent.map((interval) => ({
+            from: new Date(interval.from).toISOString(),
             at: new Date(interval.to).toISOString(),
             minutes: Math.round((interval.to - interval.from) / 60000),
             down: interval.down,
             up: interval.up,
             reset: interval.reset,
           })),
+          // Retrieve's self-hosted stretches that overlap the hourly chart,
+          // placed along it, so its spikes can be read against the runs.
+          retrieves: recent.length
+            ? retrieveWindows(retrieveRuns)
+                .filter(
+                  (window) =>
+                    window.to > recent[0].from &&
+                    window.from < recent.at(-1).to,
+                )
+                .map((window) => ({
+                  from: new Date(window.from).toISOString(),
+                  to: new Date(window.to).toISOString(),
+                  url: window.url,
+                  start: round(slotPosition(recent, window.from), 3),
+                  end: round(slotPosition(recent, window.to), 3),
+                }))
+            : [],
         }
       : null,
     smarty: smarty

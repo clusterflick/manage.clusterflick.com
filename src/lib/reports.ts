@@ -597,11 +597,22 @@ export type BandwidthDay = {
 };
 
 export type BandwidthInterval = {
+  from: string;
   at: string;
   minutes: number;
   down: number;
   up: number;
   reset: boolean;
+};
+
+// A stretch of Retrieve's self-hosted jobs running, placed along the hourly
+// chart: `start` and `end` are in bars, 0 being the first bar's left edge.
+export type BandwidthRetrieve = {
+  from: string;
+  to: string;
+  url: string;
+  start: number;
+  end: number;
 };
 
 export type BandwidthReport =
@@ -635,6 +646,7 @@ export type BandwidthReport =
         resetDay: number | null;
         autoReset: boolean | null;
         recent: BandwidthInterval[];
+        retrieves: BandwidthRetrieve[];
       } | null;
       smarty: {
         updatedAt: string;
