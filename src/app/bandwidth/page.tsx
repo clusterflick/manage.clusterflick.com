@@ -187,6 +187,9 @@ export default function BandwidthPage() {
                 ? `the router's month rolling over on day ${router.resetDay}, or a restart -`
                 : "a restart, as the router isn't set to clear it on a schedule -"}{" "}
               where the usage between the last reading and the reset is lost.
+              Shading is Retrieve running on the self-hosted runners, from its
+              jobs&apos; own start and finish times across every attempt; a job
+              that failed shows only at its re-run.
             </>
           }
         >
@@ -213,6 +216,12 @@ export default function BandwidthPage() {
             markers={router.recent.flatMap((interval, index) =>
               interval.reset ? [{ index, label: "Counter reset" }] : [],
             )}
+            bands={router.retrieves.map((retrieve) => ({
+              start: retrieve.start,
+              end: retrieve.end,
+              label: `Retrieve running ${timeLabel(retrieve.from)}–${timeLabel(retrieve.to)}`,
+            }))}
+            bandLegend="Retrieve running"
           />
         </Panel>
       )}

@@ -9,7 +9,8 @@ in one place:
 - **Pipeline** — how reliably retrieve, transform, match and the rest actually run.
 - **Venues** — which sources have stopped answering, and why.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
-  day by day and against the billing cycle.
+  day by day and against the billing cycle, with Retrieve's runs shaded on the
+  hour-by-hour chart.
 
 The overview page puts the headline figure from each on one screen.
 

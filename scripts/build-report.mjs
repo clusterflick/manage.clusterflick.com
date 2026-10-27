@@ -202,9 +202,12 @@ async function main() {
       : `· venue health — ${health.window.probes} probes across ${health.window.venues} venues`,
   );
 
-  const bandwidth = buildBandwidthReport(
-    await readJson(source("bandwidth.json")),
-  );
+  // Retrieve's runs, already read for the pipeline report, mark when the
+  // self-hosted runners were retrieving on the hourly chart.
+  const bandwidth = buildBandwidthReport({
+    ...(await readJson(source("bandwidth.json"))),
+    retrieveRuns: runsByKey.retrieve,
+  });
   console.log(
     bandwidth.empty
       ? "· bandwidth — no readings or Smarty days"

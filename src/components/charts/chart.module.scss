@@ -35,6 +35,21 @@
   stroke-linejoin: round;
 }
 
+// A span shaded behind the bars. Ink at low opacity rather than a series
+// colour, so it reads as background in both themes and never as another part
+// of the stack.
+.band {
+  fill: var(--text-primary);
+  opacity: 0.08;
+}
+
+// The same tint in the legend, outlined - at 9px a tint that faint is
+// otherwise hard to find.
+.bandSwatch {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
 .yLabel {
   position: absolute;
   top: -4px;
