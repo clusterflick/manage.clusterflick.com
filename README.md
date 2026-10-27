@@ -1,5 +1,12 @@
 # manage.clusterflick.com
 
+> **[Clusterflick](https://clusterflick.com)** is a free, open-source site
+> listing every film showing in London, from 450+ venues in one search.
+>
+> This repository is the internal review site used to keep an eye on the data
+> pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
+> for how the pieces fit together.
+
 An internal review site for the Clusterflick pipeline. It answers five questions
 in one place:
 
