@@ -6,6 +6,7 @@ const GROUPS: Record<string, { label: string; slot: number }> = {
   macos: { label: "macOS", slot: 1 },
   pi4: { label: "Pi 4", slot: 2 },
   "github-hosted": { label: "GitHub-hosted", slot: 3 },
+  optiplex: { label: "OptiPlex", slot: 4 },
 };
 
 export const groupLabel = (key: string) => GROUPS[key]?.label ?? key;
