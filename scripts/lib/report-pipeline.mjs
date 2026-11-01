@@ -82,6 +82,9 @@ export function runnerGroup(runner) {
 // How many of a job's earlier runs its latest is compared against.
 const PREVIOUS_RUNS = 10;
 
+// A job with no successful run in this long has been dropped from the flow.
+const CURRENT_JOB_MS = 7 * 24 * 60 * 60 * 1000;
+
 // How long each of a flow's jobs takes, by the machine that ran it.
 //
 // Per job rather than per run: a run lasts as long as its slowest job, so one
@@ -93,8 +96,13 @@ const PREVIOUS_RUNS = 10;
 // window. And its latest run against the mean of the `PREVIOUS_RUNS` before it
 // on the same machine, for whether that run was in line - same machine, so a
 // job that happened to land on the slower one isn't read as having slowed.
+//
+// Jobs dropped from the flow are left out altogether, and a machine that only
+// ran those goes with them. "Recent" is measured back from the newest job here
+// rather than from the clock: GitHub's run list intermittently answers from a
+// stale index, months behind, and that must not read as every job being gone.
 function runnerReport(runs) {
-  const executions = runs
+  const allExecutions = runs
     .flatMap((run) =>
       (run.jobs ?? []).map((job) => ({
         ...job,
@@ -104,7 +112,16 @@ function runnerReport(runs) {
       })),
     )
     .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
-  if (!executions.length) return null;
+  if (!allExecutions.length) return null;
+
+  const cutoff = Date.parse(allExecutions.at(-1).startedAt) - CURRENT_JOB_MS;
+  // Sorted oldest first, so each job's entry ends up as its latest run.
+  const lastRun = new Map(
+    allExecutions.map((job) => [job.name, Date.parse(job.startedAt)]),
+  );
+  const executions = allExecutions.filter(
+    (job) => lastRun.get(job.name) >= cutoff,
+  );
 
   const groups = [...groupBy(executions, (job) => job.group)]
     .map(([key, jobs]) => ({
