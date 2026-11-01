@@ -20,9 +20,10 @@ export const WORKFLOWS = [
     workflow: "retrieve.yml",
     unassisted: true,
     // Retrieve is the one flow on self-hosted runners - a machine with four
-    // macOS workers and six Raspberry Pis - so how long its jobs take depends
-    // on which machine picked them up. Each successful job's duration and
-    // runner are kept, so a change on one machine shows against the others.
+    // macOS workers, six Raspberry Pis and the OptiPlexes - so how long its
+    // jobs take depends on which machine picked them up. Each successful job's
+    // duration and runner are kept, so a change on one machine shows against
+    // the others.
     byRunner: true,
   },
   {
