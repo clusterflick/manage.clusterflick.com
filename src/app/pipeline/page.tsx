@@ -256,7 +256,8 @@ function RunnerPanel({ name, report }: { name: string; report: RunnerReport }) {
           successful runs in every attempt, slowest job first. A line runs on
           across days a machine didn&apos;t pick the job up; the dots are the
           days it did. Below, each job&apos;s latest run against the mean of the{" "}
-          {report.previousRuns} before it on the same machine.
+          {report.previousRuns} before it on the same machine. Jobs with no
+          successful run in the last 7 days are left out.
         </>
       }
     >
