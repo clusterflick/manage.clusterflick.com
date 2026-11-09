@@ -7,6 +7,10 @@ const GROUPS: Record<string, { label: string; slot: number }> = {
   pi4: { label: "Pi 4", slot: 2 },
   "github-hosted": { label: "GitHub-hosted", slot: 3 },
   optiplex: { label: "OptiPlex", slot: 7 },
+  // The second OptiPlex, its runners named self-hosted-optiplex5090-N. A
+  // machine of its own, so a line of its own rather than folded into the
+  // first box's.
+  optiplex5090: { label: "OptiPlex 5090", slot: 5 },
 };
 
 export const groupLabel = (key: string) => GROUPS[key]?.label ?? key;
