@@ -72,8 +72,12 @@ export function tickFormatter(
         const places = step < 60_000 ? 1 : 0;
         return (value) => `${(value / 60_000).toFixed(places)}m`;
       }
-      const places = step < 1_800_000 ? 1 : 0;
-      return (value) => `${(value / 3_600_000).toFixed(places)}h`;
+      // Decimals from the step in hours: a 30-minute step needs one, or
+      // 0.5h and 1.5h round onto their neighbours and the axis reads "0h,
+      // 1h, 1h, 2h, 2h". Trailing zeros go, so whole hours stay "1h".
+      const stepHours = Number((step / 3_600_000).toFixed(2));
+      const places = (String(stepHours).split(".")[1] ?? "").length;
+      return (value) => `${Number((value / 3_600_000).toFixed(places))}h`;
     }
     case "bytes": {
       // GB unless the whole axis sits below one, as an hour's usage can.
