@@ -30,8 +30,11 @@ import { londonDay, mean, round, sum } from "./stats.mjs";
 
 export const WINDOW_DAYS = 30;
 
-// How many of the most recent readings the hourly chart shows: two days.
-const RECENT_INTERVALS = 48;
+// How far back the hourly chart reaches: two days. A span of time rather than
+// a count of readings, so a reading that never happened (10 Nov 07:00, when no
+// runner picked the job up) shortens nothing - the interval either side of it
+// is simply drawn twice as wide.
+const RECENT_MS = 48 * 3600000;
 
 const DAY_MS = 86400000;
 
@@ -315,7 +318,13 @@ export default function buildBandwidthReport(
   );
 
   const latest = readings.at(-1) ?? null;
-  const recent = intervals.slice(-RECENT_INTERVALS);
+  // Every interval ending inside the window, so the first can begin a little
+  // before it rather than being cut.
+  const recent = intervals.length
+    ? intervals.filter(
+        (interval) => interval.to > intervals.at(-1).to - RECENT_MS,
+      )
+    : [];
 
   return {
     empty: false,

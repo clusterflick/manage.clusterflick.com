@@ -179,10 +179,13 @@ export default function BandwidthPage() {
           title="Hour by hour"
           note={
             <>
-              What each interval between readings used, labelled by the reading
-              that closed it. A bar wider than an hour&apos;s worth is a reading
-              that ran late, usually because every runner was busy. A dashed
-              line is the counter resetting -{" "}
+              What each interval between readings used over the last two days,
+              labelled by the reading that closed it. Each bar is as wide as its
+              interval and as tall as its usage per hour, so a reading that ran
+              late - usually because every runner was busy - or never happened
+              shows as a wider bar rather than a taller one; its tooltip gives
+              what the whole interval used. A dashed line is the counter
+              resetting -{" "}
               {autoResets
                 ? `the router's month rolling over on day ${router.resetDay}, or a restart -`
                 : "a restart, as the router isn't set to clear it on a schedule -"}{" "}
@@ -213,6 +216,7 @@ export default function BandwidthPage() {
                 `${dateLabel(interval.at)} ${timeLabel(interval.at)}`,
             )}
             format="bytes"
+            minutes={router.recent.map((interval) => interval.minutes)}
             markers={router.recent.flatMap((interval, index) =>
               interval.reset ? [{ index, label: "Counter reset" }] : [],
             )}
