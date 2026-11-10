@@ -50,6 +50,12 @@ type Props = {
   markers?: StackMarker[];
   bands?: StackBand[];
   bandLegend?: string;
+  // How long each bar counted for, when that varies. Each bar is then drawn
+  // as wide as its time and as tall as its value per hour, so its area is
+  // still its value: an interval twice as long as the rest - a reading that
+  // never happened - reads as two ordinary hours rather than a spike. The
+  // tooltip keeps the bar's actual value.
+  minutes?: number[];
 };
 
 // A stacked bar per label. Only ever used where the parts genuinely sum to a
@@ -58,6 +64,12 @@ type Props = {
 // always drawn and is a full step away from its neighbour. Stepping forward
 // from zero and then forcing the last one in collides whenever the count is
 // not a multiple of the step - which is most of the time.
+// "2h 00m", for a bar's length in the tooltip.
+function duration(minutes: number): string {
+  const whole = Math.round(minutes);
+  return `${Math.floor(whole / 60)}h ${String(whole % 60).padStart(2, "0")}m`;
+}
+
 function labelledIndices(length: number, maximum = 6): Set<number> {
   const step = Math.max(1, Math.ceil(length / maximum));
   const indices = new Set<number>();
@@ -74,7 +86,13 @@ export default function StackedBars({
   markers = [],
   bands = [],
   bandLegend,
+  minutes,
 }: Props) {
+  if (minutes && minutes.length !== labels.length) {
+    throw new Error(
+      `StackedBars got ${minutes.length} durations for ${labels.length} bars`,
+    );
+  }
   const [hover, setHover] = useState<number | null>(null);
   const width = 720;
   // Marker labels get a band of their own above the plot, a row each, so no
@@ -89,22 +107,48 @@ export default function StackedBars({
     left: 52,
   };
 
-  const { totals, max, barWidth, innerWidth, innerHeight } = useMemo(() => {
+  const {
+    totals,
+    max,
+    spans,
+    offsets,
+    scale,
+    heightOf,
+    innerWidth,
+    innerHeight,
+  } = useMemo(() => {
     const sums = labels.map((_, index) =>
       series.reduce((total, entry) => total + (entry.values[index] ?? 0), 0),
     );
+    // Each bar's share of the axis: its minutes, or one apiece.
+    const lengths = labels.map((_, index) => minutes?.[index] ?? 1);
+    const starts = lengths.map((_, index) =>
+      lengths.slice(0, index).reduce((total, length) => total + length, 0),
+    );
+    // What a value is drawn as: per hour when bars have durations. A bar
+    // with no time to it has no width either, so its height doesn't matter.
+    const toHeight = (value: number, index: number) =>
+      minutes
+        ? lengths[index] > 0
+          ? (value * 60) / lengths[index]
+          : 0
+        : value;
     const plotWidth = width - padding.left - padding.right;
-    const slotWidth = plotWidth / Math.max(labels.length, 1);
+    const totalLength = lengths.reduce((total, length) => total + length, 0);
     return {
       totals: sums,
-      max: Math.max(...sums, 0) || 1,
-      barWidth: Math.max(slotWidth - 3, 2),
+      max: Math.max(...sums.map(toHeight), 0) || 1,
+      spans: lengths,
+      offsets: starts,
+      scale: plotWidth / Math.max(totalLength, 1),
+      heightOf: toHeight,
       innerWidth: plotWidth,
       innerHeight: svgHeight - padding.top - padding.bottom,
     };
   }, [
     series,
     labels,
+    minutes,
     svgHeight,
     padding.left,
     padding.right,
@@ -125,8 +169,16 @@ export default function StackedBars({
     return { ticks: result, domainMax: top || 1 };
   })();
 
-  const slotWidth = innerWidth / Math.max(labels.length, 1);
-  const xOf = (index: number) => padding.left + (index + 0.5) * slotWidth;
+  // A position along the bars - 0 the left edge of the first, 1.5 halfway
+  // through the second - as an x coordinate.
+  const xAt = (position: number) => {
+    if (position >= spans.length) return padding.left + innerWidth;
+    const index = Math.max(Math.floor(position), 0);
+    const within = Math.max(position - index, 0);
+    return padding.left + (offsets[index] + within * spans[index]) * scale;
+  };
+  const xOf = (index: number) => xAt(index + 0.5);
+  const barWidthOf = (index: number) => Math.max(spans[index] * scale - 3, 2);
   const hOf = (value: number) => (value / domainMax) * innerHeight;
   const baseline = padding.top + innerHeight;
   const formatValue = VALUE_FORMAT[format];
@@ -169,7 +221,7 @@ export default function StackedBars({
   // it they read rightwards and the leftmost does.
   const placedMarkers = (() => {
     const placed = markers.map((marker) => {
-      const x = padding.left + marker.index * slotWidth;
+      const x = xAt(marker.index);
       return { marker, x, leftwards: x > padding.left + innerWidth / 2 };
     });
     const ordered = [
@@ -215,9 +267,9 @@ export default function StackedBars({
         {bands.map((band) => (
           <rect
             key={`band-${band.start}-${band.end}`}
-            x={padding.left + band.start * slotWidth}
+            x={xAt(band.start)}
             y={padding.top}
-            width={Math.max((band.end - band.start) * slotWidth, 1)}
+            width={Math.max(xAt(band.end) - xAt(band.start), 1)}
             height={innerHeight}
             className={styles.band}
             pointerEvents="none"
@@ -226,10 +278,11 @@ export default function StackedBars({
 
         {labels.map((label, index) => {
           let cursor = 0;
+          const barWidth = barWidthOf(index);
           return (
             <g key={`${label}-${index}`}>
               {series.map((entry) => {
-                const value = entry.values[index] ?? 0;
+                const value = heightOf(entry.values[index] ?? 0, index);
                 if (value <= 0) return null;
                 const segmentHeight = hOf(value);
                 const y = baseline - hOf(cursor) - segmentHeight;
@@ -345,6 +398,13 @@ export default function StackedBars({
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>
+          {/* Only for a bar that isn't about an hour, which is the one whose
+              height and value differ enough to need saying. */}
+          {minutes && Math.abs(spans[hover] - 60) >= 10 && (
+            <div className={styles.tooltipNote}>
+              Over {duration(spans[hover])}, drawn per hour
+            </div>
+          )}
           {markers
             .filter((marker) => marker.index === hover)
             .map((marker) => (
