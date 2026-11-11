@@ -3,10 +3,10 @@
 // chart and the table agree, and a group missing from a window doesn't
 // repaint the others. A group not listed here shows under its key.
 const GROUPS: Record<string, { label: string; slot: number }> = {
-  macos: { label: "macOS", slot: 1 },
-  pi4: { label: "Pi 4", slot: 2 },
+  macos: { label: "MacBook Pro", slot: 1 },
+  pi4: { label: "Raspberry Pi 4", slot: 2 },
   "github-hosted": { label: "GitHub-hosted", slot: 3 },
-  optiplex: { label: "OptiPlex", slot: 7 },
+  optiplex: { label: "OptiPlex 7080", slot: 7 },
   // The second OptiPlex, its runners named self-hosted-optiplex5090-N. A
   // machine of its own, so a line of its own rather than folded into the
   // first box's.
