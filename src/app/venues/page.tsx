@@ -7,6 +7,7 @@ import HealthTable from "./health-table";
 import { health, overview } from "@/lib/reports";
 import StatusPill from "@/components/status-pill";
 import RelativeTime from "@/components/relative-time";
+import FailureMessage from "@/components/failure-message";
 import { failureStatus } from "@/lib/status";
 import {
   count,
@@ -87,8 +88,12 @@ export default function VenuesPage() {
                         {venue.venue}
                       </td>
                       <td className={styles.nowrap}>{outage.kind}</td>
-                      <td className={styles.message}>
-                        {outage.message ?? "—"}
+                      <td>
+                        {outage.message ? (
+                          <FailureMessage message={outage.message} />
+                        ) : (
+                          <span className={styles.message}>—</span>
+                        )}
                       </td>
                       <td className={`${styles.right} ${styles.nowrap}`}>
                         {outage.lastOkAt
@@ -166,7 +171,7 @@ export default function VenuesPage() {
 
       <Panel
         title="Recent failures"
-        note="Most recent first, with the message the probe came back with."
+        note="Most recent first, with the message the probe came back with. A long message is cut short; click it for the whole of it."
         flush
       >
         <div className={styles.scroll}>
@@ -186,9 +191,14 @@ export default function VenuesPage() {
                   <td className={styles.nowrap}>{dateTimeLabel(failure.at)}</td>
                   <td className="mono">{failure.venue}</td>
                   <td className={styles.nowrap}>{failure.kind}</td>
-                  <td className={styles.message}>
-                    {failure.message ??
-                      (failure.status ? `status ${failure.status}` : "—")}
+                  <td>
+                    {failure.message ? (
+                      <FailureMessage message={failure.message} />
+                    ) : (
+                      <span className={styles.message}>
+                        {failure.status ? `status ${failure.status}` : "—"}
+                      </span>
+                    )}
                   </td>
                   <td className={styles.right}>
                     {duration(failure.durationMs)}

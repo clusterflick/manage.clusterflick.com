@@ -128,3 +128,19 @@ export function signedPercent(value: number | null | undefined): string {
   if (rounded === 0) return "0%";
   return `${rounded > 0 ? "+" : ""}${rounded}%`;
 }
+
+const MESSAGE_LIMIT = 160;
+
+// A failure message cut down to what identifies it in a table. Most of a long
+// one is a URL's query string - a chain's listing call names every venue in
+// it - so each URL keeps its host and path and drops the query, and whatever
+// is still long is cut at the limit. Returns the message itself when nothing
+// needed cutting, so a caller can tell there is no more to show.
+export function shortenMessage(message: string): string {
+  const withoutQueries = message.replace(
+    /(https?:\/\/[^\s?#]+)[?#]\S*/g,
+    "$1?…",
+  );
+  if (withoutQueries.length <= MESSAGE_LIMIT) return withoutQueries;
+  return `${withoutQueries.slice(0, MESSAGE_LIMIT).trimEnd()}…`;
+}

@@ -1,0 +1,23 @@
+.message {
+  color: var(--text-secondary);
+  font-size: 0.81rem;
+  max-width: 420px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.details summary {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text);
+  }
+}
+
+.full {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.76rem;
+  user-select: all;
+}
