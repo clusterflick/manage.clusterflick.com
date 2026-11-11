@@ -13,6 +13,7 @@ import pipelineJson from "@/generated/pipeline.json";
 import healthJson from "@/generated/health.json";
 import bandwidthJson from "@/generated/bandwidth.json";
 import accessibilityJson from "@/generated/accessibility.json";
+import matchedJson from "@/generated/matched.json";
 
 export type ReleaseInfo = {
   tag: string;
@@ -568,6 +569,11 @@ export type OverviewReport = {
     days: number;
     worst: { source: string; tag: AccessibilityTag }[];
   } | null;
+  matched: {
+    flags: { source: MatchedSource; kind: MatchedFlagKind }[];
+    sources: number;
+    days: number;
+  } | null;
   bandwidth: {
     latestComplete: { date: string; bytes: number } | null;
     meanPerDay: number | null;
@@ -747,6 +753,56 @@ export type AccessibilityReport =
       sources: AccessibilitySource[];
     };
 
+export type MatchedSource =
+  | "bechdel"
+  | "imdb"
+  | "letterboxd"
+  | "metacritic"
+  | "moviedb"
+  | "rottentomatoes";
+
+// What has gone wrong with a source, most severe first: it is not in the
+// latest release at all, none of its matches carry a score, the share that do
+// has fallen, or it is matching far fewer films than usual.
+export type MatchedFlagKind =
+  "missing" | "unscored" | "scores-fell" | "matches-fell";
+
+export type MatchedFlag = {
+  key: string;
+  source: MatchedSource;
+  kind: MatchedFlagKind;
+  // The first of the run of releases, ending at the latest, it has held in.
+  since: string | null;
+};
+
+export type MatchedSourceReport = {
+  source: MatchedSource;
+  // Null when the source is missing from the latest release.
+  latest: { matched: number; scored: number; share: number } | null;
+  // Medians before the last fortnight; null without enough releases to say.
+  baseline: { matched: number; share: number } | null;
+  // One point per release; null where the source was missing.
+  matchedSeries: (number | null)[];
+  shareSeries: (number | null)[];
+};
+
+export type MatchedReport =
+  | { empty: true }
+  | {
+      empty: false;
+      window: {
+        releases: number;
+        firstAt: string;
+        lastAt: string;
+        days: number;
+        baselineGapDays: number;
+        fallRatio: number;
+      };
+      releases: { tag: string; publishedAt: string }[];
+      flags: MatchedFlag[];
+      sources: MatchedSourceReport[];
+    };
+
 // The generated JSON is the shape these builders write; the assertion is where
 // that contract is stated, and the builders are the only thing that can break it.
 export const overview = overviewJson as unknown as OverviewReport;
@@ -757,3 +813,4 @@ export const health = healthJson as unknown as HealthReport;
 export const bandwidth = bandwidthJson as unknown as BandwidthReport;
 export const accessibility =
   accessibilityJson as unknown as AccessibilityReport;
+export const matched = matchedJson as unknown as MatchedReport;
