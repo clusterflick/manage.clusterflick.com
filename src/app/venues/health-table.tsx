@@ -5,6 +5,7 @@ import Sparkline from "@/components/charts/sparkline";
 import StatusPill from "@/components/status-pill";
 import type { HealthVenue } from "@/lib/reports";
 import { failureStatus } from "@/lib/status";
+import FailureMessage from "@/components/failure-message";
 import RelativeTime from "@/components/relative-time";
 import { count, dateTimeLabel, duration } from "@/lib/format";
 import styles from "./page.module.scss";
@@ -49,9 +50,11 @@ function FailureSummary({
       <ul className={styles.messageList}>
         {messages.map((entry) => (
           <li key={`${entry.kind}-${entry.message}`}>
-            <span className={styles.message}>
-              {entry.message ?? "No message"}
-            </span>
+            {entry.message ? (
+              <FailureMessage message={entry.message} />
+            ) : (
+              <span className={styles.message}>No message</span>
+            )}
             <span className={styles.messageMeta}>
               {entry.count > 1 &&
                 `${count(entry.count)} times, ${dateTimeLabel(entry.firstAt)} to `}
