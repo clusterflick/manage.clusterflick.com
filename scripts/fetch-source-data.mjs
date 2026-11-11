@@ -21,6 +21,8 @@
 //                         release a week (default 26)
 //   ACCESSIBILITY_DAILY_DAYS - the most recent days it reads a release a day
 //                              for (default 14)
+//   MATCHED_DAYS - how many days of data-matched releases the matching trend
+//                  reads, the last of each day (default 90)
 //   SKIP_EXISTING - reuse anything already in ./source-data
 
 import { execFile } from "node:child_process";
@@ -41,6 +43,12 @@ import {
   accessibilitySnapshotOf,
   pickAccessibilityReleases,
 } from "./lib/accessibility-history.mjs";
+import {
+  MATCHED_SNAPSHOT_VERSION,
+  MATCHED_SOURCES,
+  matchedSnapshotOf,
+  pickMatchedReleases,
+} from "./lib/matched-history.mjs";
 import {
   api,
   downloadAsset,
@@ -67,6 +75,7 @@ const ACCESSIBILITY_WEEKS = Number(process.env.ACCESSIBILITY_WEEKS || 26);
 const ACCESSIBILITY_DAILY_DAYS = Number(
   process.env.ACCESSIBILITY_DAILY_DAYS || 14,
 );
+const MATCHED_DAYS = Number(process.env.MATCHED_DAYS || 90);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
 // How long to wait before asking again for a flow's runs when the first answer
 // held none - see `fetchWorkflowRuns`.
@@ -326,6 +335,73 @@ async function fetchAccessibilityHistory() {
       return `${releases.length} releases (${downloaded} downloaded)`;
     },
   );
+}
+
+// A day's data-matched release per day, for the matching trend - see
+// scripts/lib/matched-history.mjs. A release's assets come to around 1.6MB
+// together and are reduced to two numbers per source, kept in .cache by tag.
+// Losing the cache costs one build the whole window, around 150MB; after that
+// it is none or one release a build.
+const MATCHED_CACHE = path.join(process.cwd(), ".cache", "matched-history");
+
+async function fetchMatchedHistory() {
+  const dir = path.join(OUT, "matched-history");
+  await step("matched history", path.join(dir, "index.json"), async () => {
+    const since = Date.now() - (MATCHED_DAYS + 1) * 24 * 60 * 60 * 1000;
+    const releases = pickMatchedReleases(
+      await listReleasesSince("clusterflick/data-matched", since),
+      { days: MATCHED_DAYS },
+    );
+    // The newest is usually the one fetchPipelineOutput just downloaded.
+    const latest = await readJson(path.join(OUT, "matched-release.json")).catch(
+      () => null,
+    );
+
+    await rm(dir, { recursive: true, force: true });
+    let downloaded = 0;
+    for (const release of releases) {
+      const cached = path.join(MATCHED_CACHE, `${release.tag_name}.json`);
+      const current =
+        (await exists(cached)) &&
+        (await readJson(cached)).version === MATCHED_SNAPSHOT_VERSION;
+      if (!current) {
+        const files = {};
+        for (const asset of release.assets) {
+          const name = asset.name.replace(/\.json$/, "");
+          if (!MATCHED_SOURCES[name]) continue;
+          let file = path.join(OUT, "matched", asset.name);
+          if (latest?.tag !== release.tag_name) {
+            file = path.join(OUT, "matched-history.tmp.json");
+            await downloadAsset(asset, file);
+          }
+          files[name] = await readJson(file);
+          if (latest?.tag !== release.tag_name) await rm(file);
+        }
+        if (latest?.tag !== release.tag_name) downloaded += 1;
+        await writeJson(cached, matchedSnapshotOf(files));
+      }
+      await mkdir(dir, { recursive: true });
+      await copyFile(cached, path.join(dir, `${release.tag_name}.json`));
+    }
+
+    // Releases that have aged out of the window, or been replaced as their
+    // day's latest, drop out of the cache too.
+    const wanted = new Set(
+      releases.map((release) => `${release.tag_name}.json`),
+    );
+    for (const file of await readdir(MATCHED_CACHE).catch(() => [])) {
+      if (!wanted.has(file)) await rm(path.join(MATCHED_CACHE, file));
+    }
+
+    await writeJson(
+      path.join(dir, "index.json"),
+      releases.map((release) => ({
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+      })),
+    );
+    return `${releases.length} releases (${downloaded} downloaded)`;
+  });
 }
 
 // The LLM usage log lives one release per month, tagged llm-usage-YYYYMM, with
@@ -830,6 +906,7 @@ async function main() {
   await fetchPipelineOutput();
   await fetchCombinedHistory();
   await fetchAccessibilityHistory();
+  await fetchMatchedHistory();
   await fetchTransformed();
   await fetchNormaliser();
   await fetchLlmUsage();

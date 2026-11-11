@@ -18,11 +18,19 @@ import {
   percent,
   signedPercent,
 } from "@/lib/format";
+import { KIND_LABEL, SOURCE_LABEL } from "./matching/labels";
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
-  const { catalogue, llm, pipeline, health, bandwidth, accessibility } =
-    overview;
+  const {
+    catalogue,
+    llm,
+    pipeline,
+    health,
+    bandwidth,
+    accessibility,
+    matched,
+  } = overview;
   const builtAt = new Date(overview.fetchedAt);
 
   const unassisted = pipeline.workflows.filter(
@@ -278,6 +286,31 @@ export default function OverviewPage() {
               severity={accessibility.lost ? "serious" : "good"}
               severityLabel={accessibility.lost ? "Check" : undefined}
               href="/accessibility"
+            />
+          </StatGrid>
+        </>
+      )}
+
+      {matched && (
+        <>
+          <h2 className={styles.sectionHeading}>Matching</h2>
+          <StatGrid>
+            <StatTile
+              label="Rating sources to check"
+              value={count(matched.flags.length)}
+              detail={
+                matched.flags.length
+                  ? matched.flags
+                      .map(
+                        ({ source, kind }) =>
+                          `${SOURCE_LABEL[source]}: ${KIND_LABEL[kind]}`,
+                      )
+                      .join(", ")
+                  : `All ${matched.sources} sources matching and scoring as usual over ${matched.days} days`
+              }
+              severity={matched.flags.length ? "critical" : "good"}
+              severityLabel={matched.flags.length ? "Check" : undefined}
+              href="/matching"
             />
           </StatGrid>
         </>

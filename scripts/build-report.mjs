@@ -20,6 +20,7 @@ import buildNormaliserReport from "./lib/report-normaliser.mjs";
 import buildFlappingReport from "./lib/report-flapping.mjs";
 import buildBandwidthReport from "./lib/report-bandwidth.mjs";
 import buildAccessibilityReport from "./lib/report-accessibility.mjs";
+import buildMatchedReport from "./lib/report-matched.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
@@ -27,7 +28,7 @@ const OUT = path.join(process.cwd(), "src", "generated");
 const source = (...parts) => path.join(SOURCE, ...parts);
 
 function buildOverview(
-  { catalogue, llm, pipeline, health, bandwidth, accessibility },
+  { catalogue, llm, pipeline, health, bandwidth, accessibility, matched },
   fetchedAt,
 ) {
   return {
@@ -89,6 +90,13 @@ function buildOverview(
             .filter((flag) => flag.kind !== "new")
             .slice(0, 3)
             .map((flag) => ({ source: flag.source.name, tag: flag.tag })),
+        },
+    matched: matched.empty
+      ? null
+      : {
+          flags: matched.flags.map(({ source, kind }) => ({ source, kind })),
+          sources: matched.sources.length,
+          days: matched.window.days,
         },
     bandwidth: bandwidth.empty
       ? null
@@ -205,6 +213,23 @@ async function main() {
       : `· accessibility — over ${accessibility.window.releases} releases and ${accessibility.window.days} days, ${accessibility.totals.lost} tags lost across ${accessibility.totals.sourcesMeasured} sources`,
   );
 
+  const matchedReleases = await readJson(
+    source("matched-history", "index.json"),
+  );
+  const matchedHistory = [];
+  for (const release of matchedReleases) {
+    matchedHistory.push({
+      ...release,
+      ...(await readJson(source("matched-history", `${release.tag}.json`))),
+    });
+  }
+  const matched = buildMatchedReport({ history: matchedHistory });
+  console.log(
+    matched.empty
+      ? "· matching — no history"
+      : `· matching — over ${matched.window.releases} releases and ${matched.window.days} days, ${matched.flags.length} flagged`,
+  );
+
   const llm = buildLlmReport(
     await readJson(source("llm-usage.json")),
     await readJson(source("llm-venues.json")),
@@ -250,7 +275,7 @@ async function main() {
   );
 
   const overview = buildOverview(
-    { catalogue, llm, pipeline, health, bandwidth, accessibility },
+    { catalogue, llm, pipeline, health, bandwidth, accessibility, matched },
     fetchedAt,
   );
 
@@ -262,6 +287,7 @@ async function main() {
     health,
     bandwidth,
     accessibility,
+    matched,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
     const { size } = await readFile(file).then((buffer) => ({

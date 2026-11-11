@@ -7,7 +7,7 @@
 > pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
 > for how the pieces fit together.
 
-An internal review site for the Clusterflick pipeline. It answers six questions
+An internal review site for the Clusterflick pipeline. It answers seven questions
 in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
@@ -19,6 +19,8 @@ in one place:
 - **Venues** — which sources have stopped answering, and why.
 - **Accessibility** — which sources have stopped carrying an accessibility tag
   they used to.
+- **Matching** — which rating sources have stopped matching films, or stopped
+  giving us their scores.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
   day by day and against the billing cycle, with Retrieve's runs shaded on the
   hour-by-hour chart.
@@ -59,6 +61,7 @@ Useful environment variables for the fetch step:
 | `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
 | `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility trend reads, at a release a week.                                                          |
 | `ACCESSIBILITY_DAILY_DAYS`          | `14`    | The most recent days the accessibility trend reads a release a day for.                                                   |
+| `MATCHED_DAYS`                      | `90`    | How many days of data-matched releases the matching trend reads, the last of each day.                                    |
 
 ## Deployment
 
@@ -95,6 +98,15 @@ window, around 800MB; after that it is none or one a build.
 A flag there is a prompt to look rather than a verdict: a share moves with the
 programme as well as with the mapping. The thresholds, and what they are tuned
 against, are at the top of `scripts/lib/report-accessibility.mjs`.
+
+The matching trend follows, per rating source, how many films matched and how
+many of those carry the score the website shows. A source can break without
+failing - Rotten Tomatoes renamed its score field and every film went out with
+none - so `match` refuses to publish a source with no matches or no scores, and
+this catches anything short of that. It reads the last `data-matched` release
+of each day for 90 days, each reduced to two numbers per source and kept in
+`./.cache/matched-history` by tag; the thresholds, and the history they were
+set against, are at the top of `scripts/lib/report-matched.mjs`.
 
 The per-venue LLM breakdown comes from workflow artifacts, which need a token to
 download and expire after a fortnight. Without one, the LLM page says so in
