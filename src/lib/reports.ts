@@ -12,6 +12,7 @@ import llmJson from "@/generated/llm.json";
 import pipelineJson from "@/generated/pipeline.json";
 import healthJson from "@/generated/health.json";
 import bandwidthJson from "@/generated/bandwidth.json";
+import accessibilityJson from "@/generated/accessibility.json";
 
 export type ReleaseInfo = {
   tag: string;
@@ -560,6 +561,13 @@ export type OverviewReport = {
     failureRate: number;
     failingNow: string[];
   } | null;
+  accessibility: {
+    lost: number;
+    appeared: number;
+    sourcesMeasured: number;
+    days: number;
+    worst: { source: string; tag: AccessibilityTag }[];
+  } | null;
   bandwidth: {
     latestComplete: { date: string; bytes: number } | null;
     meanPerDay: number | null;
@@ -655,6 +663,90 @@ export type BandwidthReport =
       } | null;
     };
 
+export type AccessibilityTag =
+  | "audioDescription"
+  | "babyFriendly"
+  | "dogFriendly"
+  | "hardOfHearing"
+  | "relaxed"
+  | "subtitled";
+
+// What happened to a tag's share of a source's performances: it is on nothing
+// now, it has fallen to a fraction of where it sat, or it has appeared where
+// it was all but absent.
+export type AccessibilityFlagKind = "gone" | "fall" | "new";
+
+// A chain's venues share a site and a mapping, so a chain is one source; each
+// venue is also a source of its own.
+export type AccessibilitySourceRef = {
+  key: string;
+  kind: "chain" | "venue";
+  name: string;
+  // The venue's id; null for a chain.
+  id: string | null;
+  venues: number;
+};
+
+export type AccessibilityFlag = {
+  key: string;
+  source: AccessibilitySourceRef;
+  tag: AccessibilityTag;
+  kind: AccessibilityFlagKind;
+  // Shares of the source's performances: the median before the last three
+  // weeks, and the last week pooled.
+  baseline: number;
+  current: number;
+  // Tagged performances in the latest release, of `performances` listed.
+  latest: number;
+  performances: number;
+  // The release after which the share never got back to half its baseline.
+  since: string | null;
+  // One share per release; null where the source listed too little to say.
+  series: (number | null)[];
+};
+
+export type AccessibilitySource = AccessibilitySourceRef & {
+  chain: string | null;
+  performances: number;
+  tags: Partial<
+    Record<
+      AccessibilityTag,
+      {
+        latest: number;
+        series: (number | null)[];
+        baseline: number | null;
+        current: number | null;
+        kind: AccessibilityFlagKind | null;
+      }
+    >
+  >;
+};
+
+export type AccessibilityReport =
+  | { empty: true }
+  | {
+      empty: false;
+      window: {
+        releases: number;
+        firstAt: string;
+        lastAt: string;
+        days: number;
+        recentDays: number;
+        baselineGapDays: number;
+      };
+      releases: { tag: string; publishedAt: string }[];
+      tags: {
+        tag: AccessibilityTag;
+        tagged: number;
+        performances: number;
+        share: number;
+        series: number[];
+      }[];
+      totals: { lost: number; appeared: number; sourcesMeasured: number };
+      flags: AccessibilityFlag[];
+      sources: AccessibilitySource[];
+    };
+
 // The generated JSON is the shape these builders write; the assertion is where
 // that contract is stated, and the builders are the only thing that can break it.
 export const overview = overviewJson as unknown as OverviewReport;
@@ -663,3 +755,5 @@ export const llm = llmJson as unknown as LlmReport;
 export const pipeline = pipelineJson as unknown as PipelineReport;
 export const health = healthJson as unknown as HealthReport;
 export const bandwidth = bandwidthJson as unknown as BandwidthReport;
+export const accessibility =
+  accessibilityJson as unknown as AccessibilityReport;

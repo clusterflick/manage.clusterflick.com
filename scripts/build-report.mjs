@@ -19,6 +19,7 @@ import buildHealthReport from "./lib/report-health.mjs";
 import buildNormaliserReport from "./lib/report-normaliser.mjs";
 import buildFlappingReport from "./lib/report-flapping.mjs";
 import buildBandwidthReport from "./lib/report-bandwidth.mjs";
+import buildAccessibilityReport from "./lib/report-accessibility.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
@@ -26,7 +27,7 @@ const OUT = path.join(process.cwd(), "src", "generated");
 const source = (...parts) => path.join(SOURCE, ...parts);
 
 function buildOverview(
-  { catalogue, llm, pipeline, health, bandwidth },
+  { catalogue, llm, pipeline, health, bandwidth, accessibility },
   fetchedAt,
 ) {
   return {
@@ -76,6 +77,18 @@ function buildOverview(
           probes: health.window.probes,
           failureRate: health.totals.failureRate,
           failingNow: health.totals.failingNow,
+        },
+    accessibility: accessibility.empty
+      ? null
+      : {
+          lost: accessibility.totals.lost,
+          appeared: accessibility.totals.appeared,
+          sourcesMeasured: accessibility.totals.sourcesMeasured,
+          days: accessibility.window.days,
+          worst: accessibility.flags
+            .filter((flag) => flag.kind !== "new")
+            .slice(0, 3)
+            .map((flag) => ({ source: flag.source.name, tag: flag.tag })),
         },
     bandwidth: bandwidth.empty
       ? null
@@ -170,6 +183,28 @@ async function main() {
     `· flapping — over ${history.length} releases, ${catalogue.flapping.match.listings} listings flapped between matches (${catalogue.flapping.match.settled} more since settled) and ${catalogue.flapping.presence.listings} in and out`,
   );
 
+  const accessibilityReleases = await readJson(
+    source("accessibility-history", "index.json"),
+  );
+  const accessibilityHistory = [];
+  for (const release of accessibilityReleases) {
+    accessibilityHistory.push({
+      ...release,
+      ...(await readJson(
+        source("accessibility-history", `${release.tag}.json`),
+      )),
+    });
+  }
+  const accessibility = buildAccessibilityReport({
+    history: accessibilityHistory,
+    venues: combined.venues,
+  });
+  console.log(
+    accessibility.empty
+      ? "· accessibility — no history"
+      : `· accessibility — over ${accessibility.window.releases} releases and ${accessibility.window.days} days, ${accessibility.totals.lost} tags lost across ${accessibility.totals.sourcesMeasured} sources`,
+  );
+
   const llm = buildLlmReport(
     await readJson(source("llm-usage.json")),
     await readJson(source("llm-venues.json")),
@@ -215,7 +250,7 @@ async function main() {
   );
 
   const overview = buildOverview(
-    { catalogue, llm, pipeline, health, bandwidth },
+    { catalogue, llm, pipeline, health, bandwidth, accessibility },
     fetchedAt,
   );
 
@@ -226,6 +261,7 @@ async function main() {
     pipeline,
     health,
     bandwidth,
+    accessibility,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
     const { size } = await readFile(file).then((buffer) => ({

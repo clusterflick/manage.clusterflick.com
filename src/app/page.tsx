@@ -21,7 +21,8 @@ import {
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
-  const { catalogue, llm, pipeline, health, bandwidth } = overview;
+  const { catalogue, llm, pipeline, health, bandwidth, accessibility } =
+    overview;
   const builtAt = new Date(overview.fetchedAt);
 
   const unassisted = pipeline.workflows.filter(
@@ -254,6 +255,30 @@ export default function OverviewPage() {
                 href={`/pipeline#${worstUnassisted.key}`}
               />
             )}
+          </StatGrid>
+        </>
+      )}
+
+      {accessibility && (
+        <>
+          <h2 className={styles.sectionHeading}>Accessibility</h2>
+          <StatGrid>
+            <StatTile
+              label="Tags fallen away"
+              value={count(accessibility.lost)}
+              detail={
+                accessibility.lost
+                  ? `${accessibility.worst
+                      .map(({ source }) => source)
+                      .join(
+                        ", ",
+                      )}${accessibility.lost > accessibility.worst.length ? " and more" : ""} — a source that has stopped carrying a tag it used to`
+                  : `Every tag is near its usual share across ${accessibility.sourcesMeasured} sources over ${accessibility.days} days`
+              }
+              severity={accessibility.lost ? "serious" : "good"}
+              severityLabel={accessibility.lost ? "Check" : undefined}
+              href="/accessibility"
+            />
           </StatGrid>
         </>
       )}
