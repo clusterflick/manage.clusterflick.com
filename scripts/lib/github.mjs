@@ -80,6 +80,27 @@ export async function listReleases(repo, perPage = 100) {
   );
 }
 
+// Every release published since `since`, newest first, paging until one older
+// than that turns up. For the windows longer than a single page reaches -
+// data-combined publishes several times a day, so 100 releases is about six
+// weeks of it.
+const MAX_RELEASE_PAGES = 15;
+
+export async function listReleasesSince(repo, since) {
+  const cutoff = new Date(since).toISOString();
+  const releases = [];
+  for (let page = 1; page <= MAX_RELEASE_PAGES; page += 1) {
+    const batch = await api(
+      `https://api.github.com/repos/${repo}/releases?per_page=100&page=${page}`,
+      `${repo} releases (page ${page})`,
+    );
+    releases.push(...batch);
+    if (batch.length < 100) break;
+    if (batch.some((release) => release.published_at < cutoff)) break;
+  }
+  return releases.filter((release) => release.published_at >= cutoff);
+}
+
 export async function latestRelease(repo) {
   return api(
     `https://api.github.com/repos/${repo}/releases/latest`,

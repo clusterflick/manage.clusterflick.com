@@ -17,6 +17,10 @@
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
 //   FLAP_RELEASES - how many data-combined releases to compare for flapping
 //                   (default 30, about ten days)
+//   ACCESSIBILITY_WEEKS - how far back the accessibility trend reads, a
+//                         release a week (default 26)
+//   ACCESSIBILITY_DAILY_DAYS - the most recent days it reads a release a day
+//                              for (default 14)
 //   SKIP_EXISTING - reuse anything already in ./source-data
 
 import { execFile } from "node:child_process";
@@ -33,6 +37,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { WORKFLOWS } from "./lib/workflows.mjs";
 import {
+  ACCESSIBILITY_SNAPSHOT_VERSION,
+  accessibilitySnapshotOf,
+  pickAccessibilityReleases,
+} from "./lib/accessibility-history.mjs";
+import {
   api,
   downloadAsset,
   downloadFile,
@@ -40,6 +49,7 @@ import {
   latestRelease,
   listAttemptJobs,
   listReleases,
+  listReleasesSince,
   listRunJobs,
   listWorkflowRuns,
   parseJsonl,
@@ -53,6 +63,10 @@ const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
 const BANDWIDTH_MONTHS = Number(process.env.BANDWIDTH_MONTHS || 3);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
 const FLAP_RELEASES = Number(process.env.FLAP_RELEASES || 30);
+const ACCESSIBILITY_WEEKS = Number(process.env.ACCESSIBILITY_WEEKS || 26);
+const ACCESSIBILITY_DAILY_DAYS = Number(
+  process.env.ACCESSIBILITY_DAILY_DAYS || 14,
+);
 const SKIP_EXISTING = process.env.SKIP_EXISTING === "true";
 // How long to wait before asking again for a flow's runs when the first answer
 // held none - see `fetchWorkflowRuns`.
@@ -227,6 +241,91 @@ async function fetchCombinedHistory() {
     );
     return `${releases.length} releases (${downloaded} downloaded)`;
   });
+}
+
+// A sparser, much longer run of data-combined releases, for the accessibility
+// trend - see scripts/lib/accessibility-history.mjs for why it is shaped this
+// way. Each release is reduced to per-venue tag counts (around 20KB) and kept
+// in .cache by tag, like the flapping history beside it.
+//
+// The first build after this cache is lost downloads every release in the
+// window, around 40 of them at 25MB apiece. After that it is the same none or
+// one a build as the flapping history.
+const ACCESSIBILITY_CACHE = path.join(
+  process.cwd(),
+  ".cache",
+  "accessibility-history",
+);
+
+async function fetchAccessibilityHistory() {
+  const dir = path.join(OUT, "accessibility-history");
+  await step(
+    "accessibility history",
+    path.join(dir, "index.json"),
+    async () => {
+      const since =
+        Date.now() - (ACCESSIBILITY_WEEKS * 7 + 1) * 24 * 60 * 60 * 1000;
+      const releases = pickAccessibilityReleases(
+        (await listReleasesSince("clusterflick/data-combined", since)).filter(
+          (release) =>
+            release.assets.some((a) => a.name === "combined-data.json"),
+        ),
+        { dailyDays: ACCESSIBILITY_DAILY_DAYS, weeks: ACCESSIBILITY_WEEKS },
+      );
+      // The newest is usually the one fetchPipelineOutput just downloaded.
+      const latest = await readJson(
+        path.join(OUT, "combined-release.json"),
+      ).catch(() => null);
+
+      await rm(dir, { recursive: true, force: true });
+      let downloaded = 0;
+      for (const release of releases) {
+        const cached = path.join(
+          ACCESSIBILITY_CACHE,
+          `${release.tag_name}.json`,
+        );
+        const current =
+          (await exists(cached)) &&
+          (await readJson(cached)).version === ACCESSIBILITY_SNAPSHOT_VERSION;
+        if (!current) {
+          let combinedFile = path.join(OUT, "combined-data.json");
+          if (latest?.tag !== release.tag_name) {
+            combinedFile = path.join(OUT, "accessibility-history.tmp.json");
+            const asset = release.assets.find(
+              (a) => a.name === "combined-data.json",
+            );
+            await downloadAsset(asset, combinedFile);
+            downloaded += 1;
+          }
+          await writeJson(
+            cached,
+            accessibilitySnapshotOf(await readJson(combinedFile)),
+          );
+          if (latest?.tag !== release.tag_name) await rm(combinedFile);
+        }
+        await mkdir(dir, { recursive: true });
+        await copyFile(cached, path.join(dir, `${release.tag_name}.json`));
+      }
+
+      // Releases that have aged out of the window, or been replaced as their
+      // day's or week's latest, drop out of the cache too.
+      const wanted = new Set(
+        releases.map((release) => `${release.tag_name}.json`),
+      );
+      for (const file of await readdir(ACCESSIBILITY_CACHE).catch(() => [])) {
+        if (!wanted.has(file)) await rm(path.join(ACCESSIBILITY_CACHE, file));
+      }
+
+      await writeJson(
+        path.join(dir, "index.json"),
+        releases.map((release) => ({
+          tag: release.tag_name,
+          publishedAt: release.published_at,
+        })),
+      );
+      return `${releases.length} releases (${downloaded} downloaded)`;
+    },
+  );
 }
 
 // The LLM usage log lives one release per month, tagged llm-usage-YYYYMM, with
@@ -730,6 +829,7 @@ async function main() {
   );
   await fetchPipelineOutput();
   await fetchCombinedHistory();
+  await fetchAccessibilityHistory();
   await fetchTransformed();
   await fetchNormaliser();
   await fetchLlmUsage();

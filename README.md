@@ -7,7 +7,7 @@
 > pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
 > for how the pieces fit together.
 
-An internal review site for the Clusterflick pipeline. It answers five questions
+An internal review site for the Clusterflick pipeline. It answers six questions
 in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
@@ -17,6 +17,8 @@ in one place:
 - **Pipeline** — how reliably retrieve, transform, match and the rest actually
   run.
 - **Venues** — which sources have stopped answering, and why.
+- **Accessibility** — which sources have stopped carrying an accessibility tag
+  they used to.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
   day by day and against the billing cycle, with Retrieve's runs shaded on the
   hour-by-hour chart.
@@ -55,6 +57,8 @@ Useful environment variables for the fetch step:
 | `BANDWIDTH_MONTHS`                  | `3`     | How many monthly bandwidth releases (hourly router readings) to pull.                                                     |
 | `RUN_WINDOW_DAYS`                   | `30`    | How far back to read workflow runs.                                                                                       |
 | `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
+| `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility trend reads, at a release a week.                                                          |
+| `ACCESSIBILITY_DAILY_DAYS`          | `14`    | The most recent days the accessibility trend reads a release a day for.                                                   |
 
 ## Deployment
 
@@ -77,6 +81,20 @@ is which film every listing sat under and when its last performance is, so each
 is reduced to that (around 850KB) and kept in `./.cache/combined-history` by
 tag. Releases never change once published, so a rebuild downloads only the ones
 it hasn't seen.
+
+The accessibility trend follows the share of each source's performances that
+carry each accessibility tag. A mapping that stops matching fails nothing — the
+tag just stops appearing — so a falling share is the only trace it leaves. That
+needs a longer window than flapping does, and can make do with a sparser one:
+the last `data-combined` release of each of the most recent 14 days, and the
+last of each week for 26 weeks before that, around 38 in all. Each is reduced to
+per-venue tag counts (around 20KB) and kept in `./.cache/accessibility-history`
+by tag. Losing that cache costs one build a download of every release in the
+window, around 800MB; after that it is none or one a build.
+
+A flag there is a prompt to look rather than a verdict: a share moves with the
+programme as well as with the mapping. The thresholds, and what they are tuned
+against, are at the top of `scripts/lib/report-accessibility.mjs`.
 
 The per-venue LLM breakdown comes from workflow artifacts, which need a token to
 download and expire after a fortnight. Without one, the LLM page says so in
