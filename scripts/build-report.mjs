@@ -223,11 +223,13 @@ async function main() {
       ...(await readJson(source("matched-history", `${release.tag}.json`))),
     });
   }
-  const matched = buildMatchedReport({ history: matchedHistory });
+  // `matched` is already the latest release's provider files, read for the
+  // catalogue above.
+  const matching = buildMatchedReport({ history: matchedHistory });
   console.log(
-    matched.empty
+    matching.empty
       ? "· matching — no history"
-      : `· matching — over ${matched.window.releases} releases and ${matched.window.days} days, ${matched.flags.length} flagged`,
+      : `· matching — over ${matching.window.releases} releases and ${matching.window.days} days, ${matching.flags.length} flagged`,
   );
 
   const llm = buildLlmReport(
@@ -275,7 +277,15 @@ async function main() {
   );
 
   const overview = buildOverview(
-    { catalogue, llm, pipeline, health, bandwidth, accessibility, matched },
+    {
+      catalogue,
+      llm,
+      pipeline,
+      health,
+      bandwidth,
+      accessibility,
+      matched: matching,
+    },
     fetchedAt,
   );
 
@@ -287,7 +297,7 @@ async function main() {
     health,
     bandwidth,
     accessibility,
-    matched,
+    matched: matching,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
     const { size } = await readFile(file).then((buffer) => ({
