@@ -765,10 +765,7 @@ export type MatchedSource =
 // latest release at all, none of its matches carry a score, the share that do
 // has fallen, or it is matching far fewer films than usual.
 export type MatchedFlagKind =
-  | "missing"
-  | "unscored"
-  | "scores-fell"
-  | "matches-fell";
+  "missing" | "unscored" | "scores-fell" | "matches-fell";
 
 export type MatchedFlag = {
   key: string;
