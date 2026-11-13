@@ -2,18 +2,31 @@
 
 import DataTable, { type Column } from "@/components/data-table";
 import Sparkline from "@/components/charts/sparkline";
-import type { AccessibilitySource, AccessibilityTag } from "@/lib/reports";
+import type { ShareSource } from "@/lib/reports";
 import { count, percent } from "@/lib/format";
-import { KIND_LABEL, TAG_LABEL, TAG_SHORT, TAG_SLOT } from "./labels";
-import styles from "./page.module.scss";
+import { KIND_LABEL } from "./labels";
+import styles from "./index.module.scss";
 
-type Props = {
-  sources: AccessibilitySource[];
-  tags: AccessibilityTag[];
+// The labels of whichever trend this is a table of - accessibility tags,
+// occasion kinds. Passed as records rather than functions, since this is a
+// client component rendered from a prerendered server page.
+type Props<Key extends string> = {
+  sources: ShareSource<Key>[];
+  keys: Key[];
+  label: Record<Key, string>;
+  // Short enough for a column header.
+  short: Record<Key, string>;
+  slot: Record<Key, number>;
 };
 
-export default function SourcesTable({ sources, tags }: Props) {
-  const columns: Column<AccessibilitySource>[] = [
+export default function SourcesTable<Key extends string>({
+  sources,
+  keys,
+  label,
+  short,
+  slot,
+}: Props<Key>) {
+  const columns: Column<ShareSource<Key>>[] = [
     {
       key: "name",
       header: "Source",
@@ -36,17 +49,17 @@ export default function SourcesTable({ sources, tags }: Props) {
       sortValue: (source) => source.performances,
       render: (source) => count(source.performances),
     },
-    ...tags.map((tag): Column<AccessibilitySource> => ({
-      key: tag,
-      header: TAG_SHORT[tag],
+    ...keys.map((key): Column<ShareSource<Key>> => ({
+      key,
+      header: short[key],
       align: "right",
       // Sorted on the share now, so the sources with none sink together.
       sortValue: (source) =>
         source.performances > 0
-          ? (source.tags[tag]?.latest ?? 0) / source.performances
+          ? (source.tags[key]?.latest ?? 0) / source.performances
           : 0,
       render: (source) => {
-        const detail = source.tags[tag];
+        const detail = source.tags[key];
         if (!detail) return <span className={styles.muted}>—</span>;
         const share =
           source.performances > 0 ? detail.latest / source.performances : 0;
@@ -54,8 +67,8 @@ export default function SourcesTable({ sources, tags }: Props) {
           <div className={styles.tagCell}>
             <Sparkline
               values={detail.series}
-              label={`${TAG_LABEL[tag]} share of ${source.name}'s performances, one point per release`}
-              slot={TAG_SLOT[tag]}
+              label={`${label[key]} share of ${source.name}'s performances, one point per release`}
+              slot={slot[key]}
               width={72}
               height={22}
               showGaps={false}

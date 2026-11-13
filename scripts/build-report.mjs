@@ -21,6 +21,7 @@ import buildFlappingReport from "./lib/report-flapping.mjs";
 import buildBandwidthReport from "./lib/report-bandwidth.mjs";
 import buildAccessibilityReport from "./lib/report-accessibility.mjs";
 import buildMatchedReport from "./lib/report-matched.mjs";
+import buildOccasionsReport from "./lib/report-occasions.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
@@ -28,7 +29,16 @@ const OUT = path.join(process.cwd(), "src", "generated");
 const source = (...parts) => path.join(SOURCE, ...parts);
 
 function buildOverview(
-  { catalogue, llm, pipeline, health, bandwidth, accessibility, matched },
+  {
+    catalogue,
+    llm,
+    pipeline,
+    health,
+    bandwidth,
+    accessibility,
+    occasions,
+    matched,
+  },
   fetchedAt,
 ) {
   return {
@@ -90,6 +100,18 @@ function buildOverview(
             .filter((flag) => flag.kind !== "new")
             .slice(0, 3)
             .map((flag) => ({ source: flag.source.name, tag: flag.tag })),
+        },
+    occasions: occasions.empty
+      ? null
+      : {
+          lost: occasions.totals.lost,
+          appeared: occasions.totals.appeared,
+          sourcesMeasured: occasions.totals.sourcesMeasured,
+          days: occasions.window.days,
+          flagsFrom: occasions.window.flagsFrom,
+          worst: occasions.flags
+            .slice(0, 3)
+            .map((flag) => ({ source: flag.source.name, occasion: flag.tag })),
         },
     matched: matched.empty
       ? null
@@ -213,6 +235,27 @@ async function main() {
       : `· accessibility — over ${accessibility.window.releases} releases and ${accessibility.window.days} days, ${accessibility.totals.lost} tags lost across ${accessibility.totals.sourcesMeasured} sources`,
   );
 
+  const occasionsReleases = await readJson(
+    source("occasions-history", "index.json"),
+  );
+  const occasionsHistory = [];
+  for (const release of occasionsReleases) {
+    occasionsHistory.push({
+      ...release,
+      ...(await readJson(source("occasions-history", `${release.tag}.json`))),
+    });
+  }
+  const occasions = buildOccasionsReport({
+    history: occasionsHistory,
+    venues: combined.venues,
+    rules: await readJson(source("occasion-rules.json")),
+  });
+  console.log(
+    occasions.empty
+      ? "· occasions — no release carries occasions yet"
+      : `· occasions — over ${occasions.window.releases} releases and ${occasions.window.days} days, ${occasions.totals.lost} lost and ${occasions.totals.appeared} appeared across ${occasions.totals.sourcesMeasured} sources`,
+  );
+
   const matchedReleases = await readJson(
     source("matched-history", "index.json"),
   );
@@ -284,6 +327,7 @@ async function main() {
       health,
       bandwidth,
       accessibility,
+      occasions,
       matched: matching,
     },
     fetchedAt,
@@ -297,6 +341,7 @@ async function main() {
     health,
     bandwidth,
     accessibility,
+    occasions,
     matched: matching,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);

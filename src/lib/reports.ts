@@ -13,6 +13,7 @@ import pipelineJson from "@/generated/pipeline.json";
 import healthJson from "@/generated/health.json";
 import bandwidthJson from "@/generated/bandwidth.json";
 import accessibilityJson from "@/generated/accessibility.json";
+import occasionsJson from "@/generated/occasions.json";
 import matchedJson from "@/generated/matched.json";
 
 export type ReleaseInfo = {
@@ -569,6 +570,14 @@ export type OverviewReport = {
     days: number;
     worst: { source: string; tag: AccessibilityTag }[];
   } | null;
+  occasions: {
+    lost: number;
+    appeared: number;
+    sourcesMeasured: number;
+    days: number;
+    flagsFrom: string | null;
+    worst: { source: string; occasion: OccasionKey }[];
+  } | null;
   matched: {
     flags: { source: MatchedSource; kind: MatchedFlagKind }[];
     sources: number;
@@ -677,14 +686,15 @@ export type AccessibilityTag =
   | "relaxed"
   | "subtitled";
 
-// What happened to a tag's share of a source's performances: it is on nothing
-// now, it has fallen to a fraction of where it sat, or it has appeared where
-// it was all but absent.
-export type AccessibilityFlagKind = "gone" | "fall" | "new";
+// What happened to a label's share of a source's performances - an
+// accessibility tag, an occasion: it is on nothing now, it has fallen to a
+// fraction of where it sat, or it has appeared where it was all but absent.
+export type ShareFlagKind = "gone" | "fall" | "new";
+export type AccessibilityFlagKind = ShareFlagKind;
 
 // A chain's venues share a site and a mapping, so a chain is one source; each
 // venue is also a source of its own.
-export type AccessibilitySourceRef = {
+export type ShareSourceRef = {
   key: string;
   kind: "chain" | "venue";
   name: string;
@@ -692,12 +702,13 @@ export type AccessibilitySourceRef = {
   id: string | null;
   venues: number;
 };
+export type AccessibilitySourceRef = ShareSourceRef;
 
-export type AccessibilityFlag = {
+export type ShareFlag<Key extends string> = {
   key: string;
-  source: AccessibilitySourceRef;
-  tag: AccessibilityTag;
-  kind: AccessibilityFlagKind;
+  source: ShareSourceRef;
+  tag: Key;
+  kind: ShareFlagKind;
   // Shares of the source's performances: the median before the last three
   // weeks, and the last week pooled.
   baseline: number;
@@ -710,36 +721,40 @@ export type AccessibilityFlag = {
   // One share per release; null where the source listed too little to say.
   series: (number | null)[];
 };
+export type AccessibilityFlag = ShareFlag<AccessibilityTag>;
 
-export type AccessibilitySource = AccessibilitySourceRef & {
+export type ShareSource<Key extends string> = ShareSourceRef & {
   chain: string | null;
   performances: number;
   tags: Partial<
     Record<
-      AccessibilityTag,
+      Key,
       {
         latest: number;
         series: (number | null)[];
         baseline: number | null;
         current: number | null;
-        kind: AccessibilityFlagKind | null;
+        kind: ShareFlagKind | null;
       }
     >
   >;
+};
+export type AccessibilitySource = ShareSource<AccessibilityTag>;
+
+export type ShareWindow = {
+  releases: number;
+  firstAt: string;
+  lastAt: string;
+  days: number;
+  recentDays: number;
+  baselineGapDays: number;
 };
 
 export type AccessibilityReport =
   | { empty: true }
   | {
       empty: false;
-      window: {
-        releases: number;
-        firstAt: string;
-        lastAt: string;
-        days: number;
-        recentDays: number;
-        baselineGapDays: number;
-      };
+      window: ShareWindow;
       releases: { tag: string; publishedAt: string }[];
       tags: {
         tag: AccessibilityTag;
@@ -751,6 +766,67 @@ export type AccessibilityReport =
       totals: { lost: number; appeared: number; sourcesMeasured: number };
       flags: AccessibilityFlag[];
       sources: AccessibilitySource[];
+    };
+
+// `any` is a performance with any occasion at all; the rest are the
+// `performance.occasions` keys the pipeline publishes.
+export type OccasionKey =
+  | "any"
+  | "intro"
+  | "qAndA"
+  | "inConversation"
+  | "panel"
+  | "guestAppearance"
+  | "liveScore"
+  | "premiere"
+  | "preview";
+
+// A commit to the rules that read occasions, placed at the first release
+// published after it - the release it first reached.
+export type OccasionRuleChange = {
+  sha: string;
+  message: string;
+  committedAt: string;
+  url: string;
+  releaseIndex: number;
+};
+
+export type OccasionFlag = ShareFlag<OccasionKey> & {
+  // The rule change that reached the release the share changed at, if any.
+  rule: { sha: string; message: string; url: string } | null;
+};
+
+export type OccasionsReport =
+  | { empty: true }
+  | {
+      empty: false;
+      window: ShareWindow & {
+        // The first release carrying occasions, where the trend starts.
+        publishedFrom: string;
+        // Roughly when there will be enough history to flag anything; null
+        // once there is.
+        flagsFrom: string | null;
+      };
+      releases: { tag: string; publishedAt: string }[];
+      kinds: {
+        kind: OccasionKey;
+        tagged: number;
+        performances: number;
+        share: number;
+        series: number[];
+      }[];
+      // Of the performances with an occasion, the share naming who is
+      // involved.
+      named: {
+        occasions: number;
+        withNames: number;
+        share: number;
+        series: number[];
+      };
+      rules: OccasionRuleChange[];
+      totals: { lost: number; appeared: number; sourcesMeasured: number };
+      flags: OccasionFlag[];
+      sources: ShareSource<OccasionKey>[];
     };
 
 export type MatchedSource =
@@ -813,4 +889,5 @@ export const health = healthJson as unknown as HealthReport;
 export const bandwidth = bandwidthJson as unknown as BandwidthReport;
 export const accessibility =
   accessibilityJson as unknown as AccessibilityReport;
+export const occasions = occasionsJson as unknown as OccasionsReport;
 export const matched = matchedJson as unknown as MatchedReport;

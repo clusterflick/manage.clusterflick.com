@@ -7,7 +7,7 @@
 > pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
 > for how the pieces fit together.
 
-An internal review site for the Clusterflick pipeline. It answers seven questions
+An internal review site for the Clusterflick pipeline. It answers eight questions
 in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
@@ -19,6 +19,8 @@ in one place:
 - **Venues** — which sources have stopped answering, and why.
 - **Accessibility** — which sources have stopped carrying an accessibility tag
   they used to.
+- **Occasions** — which sources have stopped carrying the intros, Q&As and
+  other occasions they used to, or started carrying them where they didn't.
 - **Matching** — which rating sources have stopped matching films, or stopped
   giving us their scores.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
@@ -59,7 +61,7 @@ Useful environment variables for the fetch step:
 | `BANDWIDTH_MONTHS`                  | `3`     | How many monthly bandwidth releases (hourly router readings) to pull.                                                     |
 | `RUN_WINDOW_DAYS`                   | `30`    | How far back to read workflow runs.                                                                                       |
 | `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
-| `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility trend reads, at a release a week.                                                          |
+| `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility and occasions trends read, at a release a week.                                            |
 | `ACCESSIBILITY_DAILY_DAYS`          | `14`    | The most recent days the accessibility trend reads a release a day for.                                                   |
 | `MATCHED_DAYS`                      | `90`    | How many days of data-matched releases the matching trend reads, the last of each day.                                    |
 
@@ -98,6 +100,23 @@ window, around 800MB; after that it is none or one a build.
 A flag there is a prompt to look rather than a verdict: a share moves with the
 programme as well as with the mapping. The thresholds, and what they are tuned
 against, are at the top of `scripts/lib/report-accessibility.mjs`.
+
+The occasions trend is the same method over `performance.occasions` (an intro,
+a Q&A, a live score), read from the same releases: each is reduced to both
+snapshots from one download and kept in `./.cache/occasions-history` beside the
+accessibility one. The two differ in what can break. Only two venues pass
+occasions as structured tags; the rest are read from the listing's own words by
+`common/occasions.js` in `clusterflick/scripts`, so a share can fall because a
+venue reworded its pages, because a retrieve stopped fetching descriptions, or
+because we changed the rules. The page draws every commit to those rules at the
+release it first reached, and names one beside any flag that started there. A
+share that appears from nothing is flagged as prominently as one that falls: a
+rule that starts reading synopses as intros puts those films on the website's
+home page. The rules were merged into the pipeline on 9 November 2026, and the trend
+starts at the first release carrying any - a release before that carries none,
+which would read as every occasion having gone - so it has no baseline to flag
+against until about six weeks after; until then the page says when to expect
+one. The thresholds are at the top of `scripts/lib/report-occasions.mjs`.
 
 The matching trend follows, per rating source, how many films matched and how
 many of those carry the score the website shows. A source can break without

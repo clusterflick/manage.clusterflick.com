@@ -7,9 +7,15 @@ import LineChart from "@/components/charts/line-chart";
 import Sparkline from "@/components/charts/sparkline";
 import { accessibility } from "@/lib/reports";
 import { count, dateLabel, percent } from "@/lib/format";
-import SourcesTable from "./sources-table";
-import { KIND_LABEL, KIND_SEVERITY, TAG_LABEL, TAG_SLOT } from "./labels";
-import styles from "./page.module.scss";
+import SourcesTable from "@/components/share-trend/sources-table";
+import {
+  KIND_LABEL,
+  KIND_SEVERITY,
+  TAG_LABEL,
+  TAG_SHORT,
+  TAG_SLOT,
+} from "./labels";
+import styles from "@/components/share-trend/index.module.scss";
 
 export const metadata = { title: "Accessibility — Clusterflick manage" };
 
@@ -233,7 +239,13 @@ export default function AccessibilityPage() {
         note="Chains first, then venues by how much they have on. Each cell is the tag's share of that source's performances now, over its history. A share that looks wrong without having tripped a flag is still worth a look - a tag a source has never carried is not something a trend can notice."
         flush
       >
-        <SourcesTable sources={sources} tags={tags.map((tag) => tag.tag)} />
+        <SourcesTable
+          sources={sources}
+          keys={tags.map((tag) => tag.tag)}
+          label={TAG_LABEL}
+          short={TAG_SHORT}
+          slot={TAG_SLOT}
+        />
       </Panel>
 
       <Panel title="How a flag is raised">

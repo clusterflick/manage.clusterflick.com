@@ -52,6 +52,9 @@ type Props = {
   width?: number;
   // A grid of charts sharing series carries one legend for all of them.
   legend?: boolean;
+  // Events drawn as dashed vertical lines at a point - a deploy, a rule
+  // change - each named in the tooltip at that point. Several may share one.
+  markers?: { index: number; label: string }[];
 };
 
 // Labelled indices are counted back from the last point, so the final label is
@@ -75,6 +78,7 @@ export default function LineChart({
   yLabel,
   width = 720,
   legend = true,
+  markers = [],
 }: Props) {
   const [hover, setHover] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -211,6 +215,19 @@ export default function LineChart({
           </g>
         )}
 
+        {[...new Set(markers.map((marker) => marker.index))].map((index) => (
+          <line
+            key={`marker-${index}`}
+            x1={scale.x(index)}
+            x2={scale.x(index)}
+            y1={12}
+            y2={height - 26}
+            stroke="var(--axis)"
+            strokeWidth={1}
+            strokeDasharray="2 3"
+          />
+        ))}
+
         <g clipPath={`url(#${clipId})`}>
           {paths.map((entry) => (
             <g key={entry.key}>
@@ -294,6 +311,13 @@ export default function LineChart({
           role="status"
         >
           <div className={styles.tooltipTitle}>{labels[hover]}</div>
+          {markers
+            .filter((marker) => marker.index === hover)
+            .map((marker, index) => (
+              <div key={index} className={styles.tooltipNote}>
+                {marker.label}
+              </div>
+            ))}
           {paths.map((entry) => {
             const value = entry.values[hover];
             return (

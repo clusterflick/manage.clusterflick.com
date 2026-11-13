@@ -1,5 +1,4 @@
-import type { AccessibilityFlagKind, AccessibilityTag } from "@/lib/reports";
-import type { Severity } from "@/lib/status";
+import type { AccessibilityTag } from "@/lib/reports";
 
 export const TAG_LABEL: Record<AccessibilityTag, string> = {
   audioDescription: "Audio description",
@@ -30,17 +29,4 @@ export const TAG_SLOT: Record<AccessibilityTag, number> = {
   dogFriendly: 6,
 };
 
-export const KIND_LABEL: Record<AccessibilityFlagKind, string> = {
-  gone: "gone",
-  fall: "fallen",
-  new: "new",
-};
-
-// A tag that has appeared is worth a look - a mapping that started
-// over-matching looks the same as one that started working - but it is not a
-// loss.
-export const KIND_SEVERITY: Record<AccessibilityFlagKind, Severity> = {
-  gone: "critical",
-  fall: "serious",
-  new: "warning",
-};
+export { KIND_LABEL, KIND_SEVERITY } from "@/components/share-trend/labels";

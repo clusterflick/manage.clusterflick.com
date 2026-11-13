@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/pipeline", label: "Pipeline" },
   { href: "/venues", label: "Venues" },
   { href: "/accessibility", label: "Accessibility" },
+  { href: "/occasions", label: "Occasions" },
   { href: "/matching", label: "Matching" },
   { href: "/bandwidth", label: "Bandwidth" },
 ];
