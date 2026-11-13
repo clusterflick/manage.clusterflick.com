@@ -43,7 +43,11 @@ export function niceDomain(
 // numbers a reader recognises rather than on 0.037.
 export function niceStep(rough: number): number {
   if (!Number.isFinite(rough) || rough <= 0) return 1;
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
+  // Read as a decimal literal rather than computed: `10 ** -4` is
+  // 0.00009999999999999999 in Node but can be 0.0001 in a browser, so a chart
+  // of small shares - occasions sit under 1% - drew a different scale in the
+  // static HTML from the one it hydrated to.
+  const magnitude = Number(`1e${Math.floor(Math.log10(rough))}`);
   const normalised = rough / magnitude;
   if (normalised <= 1) return magnitude;
   if (normalised <= 2) return 2 * magnitude;
