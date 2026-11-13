@@ -19,6 +19,7 @@ import {
   signedPercent,
 } from "@/lib/format";
 import { KIND_LABEL, SOURCE_LABEL } from "./matching/labels";
+import { OCCASION_LABEL } from "./occasions/labels";
 import styles from "./page.module.scss";
 
 export default function OverviewPage() {
@@ -29,6 +30,7 @@ export default function OverviewPage() {
     health,
     bandwidth,
     accessibility,
+    occasions,
     matched,
   } = overview;
   const builtAt = new Date(overview.fetchedAt);
@@ -286,6 +288,54 @@ export default function OverviewPage() {
               severity={accessibility.lost ? "serious" : "good"}
               severityLabel={accessibility.lost ? "Check" : undefined}
               href="/accessibility"
+            />
+          </StatGrid>
+        </>
+      )}
+
+      {occasions && (
+        <>
+          <h2 className={styles.sectionHeading}>Occasions</h2>
+          <StatGrid>
+            <StatTile
+              label="Occasions to check"
+              value={
+                occasions.flagsFrom
+                  ? "—"
+                  : count(occasions.lost + occasions.appeared)
+              }
+              detail={
+                occasions.flagsFrom
+                  ? `Collecting history: flags start around ${dateLabel(occasions.flagsFrom)}`
+                  : occasions.lost + occasions.appeared
+                    ? `${occasions.worst
+                        .map(
+                          ({ source, occasion }) =>
+                            `${source}: ${OCCASION_LABEL[occasion]}`,
+                        )
+                        .join(", ")}${
+                        occasions.lost + occasions.appeared >
+                        occasions.worst.length
+                          ? " and more"
+                          : ""
+                      } — an occasion that has fallen away or newly appeared`
+                    : `Every occasion is near its usual share across ${occasions.sourcesMeasured} sources over ${occasions.days} days`
+              }
+              severity={
+                occasions.flagsFrom
+                  ? undefined
+                  : occasions.lost
+                    ? "serious"
+                    : occasions.appeared
+                      ? "warning"
+                      : "good"
+              }
+              severityLabel={
+                !occasions.flagsFrom && occasions.lost + occasions.appeared
+                  ? "Check"
+                  : undefined
+              }
+              href="/occasions"
             />
           </StatGrid>
         </>

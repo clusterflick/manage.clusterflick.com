@@ -17,8 +17,8 @@
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
 //   FLAP_RELEASES - how many data-combined releases to compare for flapping
 //                   (default 30, about ten days)
-//   ACCESSIBILITY_WEEKS - how far back the accessibility trend reads, a
-//                         release a week (default 26)
+//   ACCESSIBILITY_WEEKS - how far back the accessibility and occasions
+//                         trends read, a release a week (default 26)
 //   ACCESSIBILITY_DAILY_DAYS - the most recent days it reads a release a day
 //                              for (default 14)
 //   MATCHED_DAYS - how many days of data-matched releases the matching trend
@@ -43,6 +43,10 @@ import {
   accessibilitySnapshotOf,
   pickAccessibilityReleases,
 } from "./lib/accessibility-history.mjs";
+import {
+  OCCASIONS_SNAPSHOT_VERSION,
+  occasionsSnapshotOf,
+} from "./lib/occasions-history.mjs";
 import {
   MATCHED_SNAPSHOT_VERSION,
   MATCHED_SOURCES,
@@ -253,24 +257,36 @@ async function fetchCombinedHistory() {
 }
 
 // A sparser, much longer run of data-combined releases, for the accessibility
-// trend - see scripts/lib/accessibility-history.mjs for why it is shaped this
-// way. Each release is reduced to per-venue tag counts (around 20KB) and kept
-// in .cache by tag, like the flapping history beside it.
+// and occasions trends - see scripts/lib/accessibility-history.mjs for why it
+// is shaped this way. Each release is reduced to per-venue counts for each
+// trend (around 20KB apiece) and kept in .cache by tag, like the flapping
+// history beside it. Both trends read the same releases, so a release either
+// is missing is downloaded once and reduced to both.
 //
-// The first build after this cache is lost downloads every release in the
+// The first build after these caches are lost downloads every release in the
 // window, around 40 of them at 25MB apiece. After that it is the same none or
 // one a build as the flapping history.
-const ACCESSIBILITY_CACHE = path.join(
-  process.cwd(),
-  ".cache",
-  "accessibility-history",
-);
+const SPARSE_HISTORIES = [
+  {
+    name: "accessibility",
+    dir: "accessibility-history",
+    cache: path.join(process.cwd(), ".cache", "accessibility-history"),
+    version: ACCESSIBILITY_SNAPSHOT_VERSION,
+    snapshotOf: accessibilitySnapshotOf,
+  },
+  {
+    name: "occasions",
+    dir: "occasions-history",
+    cache: path.join(process.cwd(), ".cache", "occasions-history"),
+    version: OCCASIONS_SNAPSHOT_VERSION,
+    snapshotOf: occasionsSnapshotOf,
+  },
+];
 
-async function fetchAccessibilityHistory() {
-  const dir = path.join(OUT, "accessibility-history");
+async function fetchSparseHistory() {
   await step(
-    "accessibility history",
-    path.join(dir, "index.json"),
+    "accessibility and occasions history",
+    path.join(OUT, "occasions-history", "index.json"),
     async () => {
       const since =
         Date.now() - (ACCESSIBILITY_WEEKS * 7 + 1) * 24 * 60 * 60 * 1000;
@@ -286,53 +302,101 @@ async function fetchAccessibilityHistory() {
         path.join(OUT, "combined-release.json"),
       ).catch(() => null);
 
-      await rm(dir, { recursive: true, force: true });
+      for (const history of SPARSE_HISTORIES) {
+        await rm(path.join(OUT, history.dir), { recursive: true, force: true });
+      }
       let downloaded = 0;
       for (const release of releases) {
-        const cached = path.join(
-          ACCESSIBILITY_CACHE,
-          `${release.tag_name}.json`,
-        );
-        const current =
-          (await exists(cached)) &&
-          (await readJson(cached)).version === ACCESSIBILITY_SNAPSHOT_VERSION;
-        if (!current) {
+        const stale = [];
+        for (const history of SPARSE_HISTORIES) {
+          const cached = path.join(history.cache, `${release.tag_name}.json`);
+          const current =
+            (await exists(cached)) &&
+            (await readJson(cached)).version === history.version;
+          if (!current) stale.push({ history, cached });
+        }
+        if (stale.length) {
           let combinedFile = path.join(OUT, "combined-data.json");
           if (latest?.tag !== release.tag_name) {
-            combinedFile = path.join(OUT, "accessibility-history.tmp.json");
+            combinedFile = path.join(OUT, "sparse-history.tmp.json");
             const asset = release.assets.find(
               (a) => a.name === "combined-data.json",
             );
             await downloadAsset(asset, combinedFile);
             downloaded += 1;
           }
-          await writeJson(
-            cached,
-            accessibilitySnapshotOf(await readJson(combinedFile)),
-          );
+          const combined = await readJson(combinedFile);
+          for (const { history, cached } of stale) {
+            await writeJson(cached, history.snapshotOf(combined));
+          }
           if (latest?.tag !== release.tag_name) await rm(combinedFile);
         }
-        await mkdir(dir, { recursive: true });
-        await copyFile(cached, path.join(dir, `${release.tag_name}.json`));
+        for (const history of SPARSE_HISTORIES) {
+          await mkdir(path.join(OUT, history.dir), { recursive: true });
+          await copyFile(
+            path.join(history.cache, `${release.tag_name}.json`),
+            path.join(OUT, history.dir, `${release.tag_name}.json`),
+          );
+        }
       }
 
       // Releases that have aged out of the window, or been replaced as their
-      // day's or week's latest, drop out of the cache too.
+      // day's or week's latest, drop out of the caches too.
       const wanted = new Set(
         releases.map((release) => `${release.tag_name}.json`),
       );
-      for (const file of await readdir(ACCESSIBILITY_CACHE).catch(() => [])) {
-        if (!wanted.has(file)) await rm(path.join(ACCESSIBILITY_CACHE, file));
+      const index = releases.map((release) => ({
+        tag: release.tag_name,
+        publishedAt: release.published_at,
+      }));
+      for (const history of SPARSE_HISTORIES) {
+        for (const file of await readdir(history.cache).catch(() => [])) {
+          if (!wanted.has(file)) await rm(path.join(history.cache, file));
+        }
+        await writeJson(path.join(OUT, history.dir, "index.json"), index);
       }
-
-      await writeJson(
-        path.join(dir, "index.json"),
-        releases.map((release) => ({
-          tag: release.tag_name,
-          publishedAt: release.published_at,
-        })),
-      );
       return `${releases.length} releases (${downloaded} downloaded)`;
+    },
+  );
+}
+
+// Every change to the rules that read occasions out of a listing, over the
+// occasions trend's window. A share can move because we changed how it is
+// read as much as because a venue changed what it says, so the page marks
+// each one against the trend.
+const OCCASION_RULE_PATHS = ["common/occasions.js"];
+
+async function fetchOccasionRules() {
+  await step(
+    "occasion rule changes",
+    path.join(OUT, "occasion-rules.json"),
+    async () => {
+      const since = new Date(
+        Date.now() - (ACCESSIBILITY_WEEKS * 7 + 1) * 24 * 60 * 60 * 1000,
+      ).toISOString();
+      const commits = new Map();
+      for (const file of OCCASION_RULE_PATHS) {
+        for (let page = 1; page <= 10; page += 1) {
+          const batch = await api(
+            `https://api.github.com/repos/clusterflick/scripts/commits?sha=main&path=${encodeURIComponent(file)}&since=${since}&per_page=100&page=${page}`,
+            `clusterflick/scripts commits to ${file} (page ${page})`,
+          );
+          for (const commit of batch) {
+            commits.set(commit.sha, {
+              sha: commit.sha,
+              message: commit.commit.message.split("\n")[0],
+              committedAt: commit.commit.committer.date,
+              url: commit.html_url,
+            });
+          }
+          if (batch.length < 100) break;
+        }
+      }
+      const rules = [...commits.values()].sort((a, b) =>
+        a.committedAt.localeCompare(b.committedAt),
+      );
+      await writeJson(path.join(OUT, "occasion-rules.json"), rules);
+      return `${rules.length} commits`;
     },
   );
 }
@@ -905,7 +969,8 @@ async function main() {
   );
   await fetchPipelineOutput();
   await fetchCombinedHistory();
-  await fetchAccessibilityHistory();
+  await fetchSparseHistory();
+  await fetchOccasionRules();
   await fetchMatchedHistory();
   await fetchTransformed();
   await fetchNormaliser();
