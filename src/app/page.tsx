@@ -32,6 +32,7 @@ export default function OverviewPage() {
     accessibility,
     occasions,
     matched,
+    movie404,
   } = overview;
   const builtAt = new Date(overview.fetchedAt);
 
@@ -361,6 +362,32 @@ export default function OverviewPage() {
               severity={matched.flags.length ? "critical" : "good"}
               severityLabel={matched.flags.length ? "Check" : undefined}
               href="/matching"
+            />
+          </StatGrid>
+        </>
+      )}
+
+      {movie404 && (
+        <>
+          <h2 className={styles.sectionHeading}>Film URLs</h2>
+          <StatGrid>
+            <StatTile
+              label="Lost film URLs to check"
+              value={count(movie404.review)}
+              detail={
+                movie404.lostFilms
+                  ? `${count(movie404.lostFilms)} showing films left without a departed page`
+                  : `Of ${count(movie404.lost)} that stopped being pages over ${count(movie404.deploys)} ${movie404.deploys === 1 ? "deploy" : "deploys"} in ${movie404.days} days; ${count(movie404.redirected)} now redirect`
+              }
+              severity={
+                movie404.lostFilms
+                  ? "critical"
+                  : movie404.review
+                    ? "warning"
+                    : "good"
+              }
+              severityLabel={movie404.lostFilms ? "Check" : undefined}
+              href="/film-urls"
             />
           </StatGrid>
         </>

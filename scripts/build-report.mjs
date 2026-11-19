@@ -22,6 +22,7 @@ import buildBandwidthReport from "./lib/report-bandwidth.mjs";
 import buildAccessibilityReport from "./lib/report-accessibility.mjs";
 import buildMatchedReport from "./lib/report-matched.mjs";
 import buildOccasionsReport from "./lib/report-occasions.mjs";
+import buildMovie404Report from "./lib/report-movie-404.mjs";
 
 const SOURCE = path.join(process.cwd(), "source-data");
 const OUT = path.join(process.cwd(), "src", "generated");
@@ -38,6 +39,7 @@ function buildOverview(
     accessibility,
     occasions,
     matched,
+    movie404,
   },
   fetchedAt,
 ) {
@@ -119,6 +121,17 @@ function buildOverview(
           flags: matched.flags.map(({ source, kind }) => ({ source, kind })),
           sources: matched.sources.length,
           days: matched.window.days,
+        },
+    movie404: movie404.empty
+      ? null
+      : {
+          days: movie404.window.days,
+          deploys: movie404.window.deploys,
+          lost: movie404.totals.lost,
+          redirected: movie404.totals.redirected,
+          review: movie404.totals.review,
+          lostFilms: movie404.totals.lostFilms,
+          latestAt: movie404.window.lastAt,
         },
     bandwidth: bandwidth.empty
       ? null
@@ -319,6 +332,15 @@ async function main() {
       : `· bandwidth — ${bandwidth.router?.readings ?? 0} router readings, ${bandwidth.perDay.completeDays} complete days in the window`,
   );
 
+  const movie404 = buildMovie404Report(
+    await readJson(source("movie-404.json")),
+  );
+  console.log(
+    movie404.empty
+      ? "· film 404s — no deploys logged"
+      : `· film 404s — ${movie404.window.deploys} deploys over ${movie404.window.days} days, ${movie404.totals.lost} URLs lost, ${movie404.totals.review} to review`,
+  );
+
   const overview = buildOverview(
     {
       catalogue,
@@ -329,6 +351,7 @@ async function main() {
       accessibility,
       occasions,
       matched: matching,
+      movie404,
     },
     fetchedAt,
   );
@@ -343,6 +366,7 @@ async function main() {
     accessibility,
     occasions,
     matched: matching,
+    "movie-404": movie404,
   })) {
     const file = await writeJson(path.join(OUT, `${name}.json`), value);
     const { size } = await readFile(file).then((buffer) => ({
