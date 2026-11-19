@@ -528,7 +528,11 @@ async function fetchMovie404Log() {
       rows.push(...parseJsonl(await readFile(file, "utf8"), release.tag_name));
     }
 
-    const byDeploy = new Map(rows.map((row) => [row.deployedAt, row]));
+    // `id` is the pair of maps the row compared, so a re-run's row replaces
+    // the first. Rows logged before it existed fall back to their time.
+    const byDeploy = new Map(
+      rows.map((row) => [row.id ?? row.deployedAt, row]),
+    );
     const ordered = [...byDeploy.values()].sort((a, b) =>
       a.deployedAt.localeCompare(b.deployedAt),
     );

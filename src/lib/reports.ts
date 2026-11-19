@@ -950,7 +950,8 @@ export type Movie404Report =
       review: (LostUrl & { deployedAt: string })[];
       latest: {
         deployedAt: string;
-        previousDeployedAt: string;
+        generatedAt: string;
+        previousGeneratedAt: string;
         pages: { previous: number; current: number };
         lost: number;
         redirected: number;

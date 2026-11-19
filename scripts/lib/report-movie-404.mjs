@@ -101,7 +101,10 @@ export default function buildMovie404Report(rows) {
     review,
     latest: {
       deployedAt: latest.deployedAt,
-      previousDeployedAt: latest.previousDeployedAt,
+      // When the retrieved data each map was built from was published. The
+      // same for a deploy rebuilt from a re-run transform.
+      generatedAt: latest.generatedAt,
+      previousGeneratedAt: latest.previousGeneratedAt,
       pages: latest.pages,
       lost: latest.lost,
       redirected: latest.redirected,
