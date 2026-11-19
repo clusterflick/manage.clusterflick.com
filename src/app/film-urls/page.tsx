@@ -226,10 +226,13 @@ export default function FilmUrlsPage() {
         title={`Latest deploy: ${dateTimeLabel(latest.deployedAt)}`}
         note={
           <>
-            Against the deploy of {dateTimeLabel(latest.previousDeployedAt)}:{" "}
-            {count(latest.pages.previous)} → {count(latest.pages.current)} film
-            pages, {count(latest.lost)} URLs lost, {count(latest.redirected)}{" "}
-            now redirected
+            Against the deploy before it (
+            {latest.generatedAt === latest.previousGeneratedAt
+              ? `both from the retrieve of ${dateTimeLabel(latest.generatedAt)}, re-transformed`
+              : `retrieved ${dateTimeLabel(latest.previousGeneratedAt)}, now ${dateTimeLabel(latest.generatedAt)}`}
+            ): {count(latest.pages.previous)} → {count(latest.pages.current)}{" "}
+            film pages, {count(latest.lost)} URLs lost,{" "}
+            {count(latest.redirected)} now redirected
             {latest.shown < latest.lost
               ? `. The first ${count(latest.shown)} are shown.`
               : "."}
