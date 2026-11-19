@@ -15,6 +15,7 @@ import bandwidthJson from "@/generated/bandwidth.json";
 import accessibilityJson from "@/generated/accessibility.json";
 import occasionsJson from "@/generated/occasions.json";
 import matchedJson from "@/generated/matched.json";
+import movie404Json from "@/generated/movie-404.json";
 
 export type ReleaseInfo = {
   tag: string;
@@ -583,6 +584,15 @@ export type OverviewReport = {
     sources: number;
     days: number;
   } | null;
+  movie404: {
+    days: number;
+    deploys: number;
+    lost: number;
+    redirected: number;
+    review: number;
+    lostFilms: number;
+    latestAt: string;
+  } | null;
   bandwidth: {
     latestComplete: { date: string; bytes: number } | null;
     meanPerDay: number | null;
@@ -879,6 +889,77 @@ export type MatchedReport =
       sources: MatchedSourceReport[];
     };
 
+// Why a film URL stopped being a page (`findLostUrls` in
+// @clusterflick/catalogue): `retitled` is still a page under a new slug,
+// `listing` an unmatched listing that went, `pruned` a departed page the
+// registry forgot after a year, `lost` a showing film that left without a
+// departed page (a fault), and `unknown` one compared against a map too old to
+// say.
+export type LostUrlKind =
+  "retitled" | "listing" | "pruned" | "lost" | "unknown";
+
+// One lost URL, with what the movie-redirects Worker does with it now.
+export type LostUrl = {
+  path: string;
+  kind: LostUrlKind;
+  // Present when it's worth a person's look, saying why.
+  review?: string;
+} & (
+  | {
+      outcome: "redirect";
+      status: 301 | 302;
+      location: string;
+      rule: "id" | "title-hash" | "slug" | "fuzzy-slug";
+    }
+  | {
+      outcome: "not-found";
+      reason: "not-a-page" | "canonical" | "ambiguous" | "no-match";
+    }
+);
+
+export type Movie404Deploy = {
+  deployedAt: string;
+  pages: number;
+  lost: number;
+  redirected: number;
+  notFound: number;
+  review: number;
+};
+
+export type Movie404Report =
+  | { empty: true }
+  | {
+      empty: false;
+      window: {
+        days: number;
+        deploys: number;
+        firstAt: string;
+        lastAt: string;
+        totalDeploys: number;
+      };
+      totals: {
+        lost: number;
+        redirected: number;
+        notFound: number;
+        review: number;
+        lostFilms: number;
+      };
+      byKind: Partial<Record<LostUrlKind, number>>;
+      byOutcome: Record<string, number>;
+      deploys: Movie404Deploy[];
+      review: (LostUrl & { deployedAt: string })[];
+      latest: {
+        deployedAt: string;
+        previousDeployedAt: string;
+        pages: { previous: number; current: number };
+        lost: number;
+        redirected: number;
+        review: number;
+        shown: number;
+        urls: LostUrl[];
+      };
+    };
+
 // The generated JSON is the shape these builders write; the assertion is where
 // that contract is stated, and the builders are the only thing that can break it.
 export const overview = overviewJson as unknown as OverviewReport;
@@ -891,3 +972,4 @@ export const accessibility =
   accessibilityJson as unknown as AccessibilityReport;
 export const occasions = occasionsJson as unknown as OccasionsReport;
 export const matched = matchedJson as unknown as MatchedReport;
+export const movie404 = movie404Json as unknown as Movie404Report;

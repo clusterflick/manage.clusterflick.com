@@ -14,6 +14,7 @@
 //   HEALTH_DAYS  - how many daily venue-health releases to pull (default 14)
 //   LLM_MONTHS   - how many monthly LLM usage releases to pull (default 6)
 //   BANDWIDTH_MONTHS - how many monthly bandwidth releases to pull (default 3)
+//   MOVIE_404_MONTHS - how many monthly film 404 log releases to pull (default 2)
 //   RUN_WINDOW_DAYS - how far back to read workflow runs (default 30)
 //   FLAP_RELEASES - how many data-combined releases to compare for flapping
 //                   (default 30, about ten days)
@@ -73,6 +74,7 @@ const OUT = path.join(process.cwd(), "source-data");
 const HEALTH_DAYS = Number(process.env.HEALTH_DAYS || 14);
 const LLM_MONTHS = Number(process.env.LLM_MONTHS || 6);
 const BANDWIDTH_MONTHS = Number(process.env.BANDWIDTH_MONTHS || 3);
+const MOVIE_404_MONTHS = Number(process.env.MOVIE_404_MONTHS || 2);
 const RUN_WINDOW_DAYS = Number(process.env.RUN_WINDOW_DAYS || 30);
 const FLAP_RELEASES = Number(process.env.FLAP_RELEASES || 30);
 const ACCESSIBILITY_WEEKS = Number(process.env.ACCESSIBILITY_WEEKS || 26);
@@ -499,6 +501,39 @@ async function fetchLlmUsage() {
     );
     await writeJson(path.join(OUT, "llm-usage.json"), ordered);
     return `${ordered.length} runs across ${months.length} months`;
+  });
+}
+
+// The film 404 log lives one release per month, tagged movie-404-log-YYYYMM,
+// with one JSONL row per deploy of clusterflick.com: every film URL the deploy
+// left behind and what the movie-redirects Worker does with it now. Months are
+// stitched into one series, keyed by deploy, so a re-run's row replacing an
+// earlier one can't show up twice.
+async function fetchMovie404Log() {
+  await step("film 404 log", path.join(OUT, "movie-404.json"), async () => {
+    const releases = await listReleases("clusterflick/data-analysed");
+    const months = releases
+      .filter((release) => /^movie-404-log-\d{6}$/.test(release.tag_name))
+      .sort((a, b) => a.tag_name.localeCompare(b.tag_name))
+      .slice(-MOVIE_404_MONTHS);
+
+    const rows = [];
+    for (const release of months) {
+      const asset = release.assets.find(
+        (a) => a.name === "movie-404-log.jsonl",
+      );
+      if (!asset) continue;
+      const file = path.join(OUT, "movie-404", `${release.tag_name}.jsonl`);
+      await downloadAsset(asset, file);
+      rows.push(...parseJsonl(await readFile(file, "utf8"), release.tag_name));
+    }
+
+    const byDeploy = new Map(rows.map((row) => [row.deployedAt, row]));
+    const ordered = [...byDeploy.values()].sort((a, b) =>
+      a.deployedAt.localeCompare(b.deployedAt),
+    );
+    await writeJson(path.join(OUT, "movie-404.json"), ordered);
+    return `${ordered.length} deploys across ${months.length} months`;
   });
 }
 
@@ -978,6 +1013,7 @@ async function main() {
   await fetchLlmVenueUsage();
   await fetchVenueHealth();
   await fetchBandwidth();
+  await fetchMovie404Log();
   await fetchWorkflowRuns();
   await writeFile(
     path.join(OUT, "fetched-at.json"),

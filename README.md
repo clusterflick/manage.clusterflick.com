@@ -7,7 +7,7 @@
 > pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
 > for how the pieces fit together.
 
-An internal review site for the Clusterflick pipeline. It answers eight questions
+An internal review site for the Clusterflick pipeline. It answers nine questions
 in one place:
 
 - **Catalogue** — what is in the current data, what failed to match, what the
@@ -23,6 +23,9 @@ in one place:
   other occasions they used to, or started carrying them where they didn't.
 - **Matching** — which rating sources have stopped matching films, or stopped
   giving us their scores.
+- **Film URLs** — which film URLs each deploy of clusterflick.com stopped
+  serving, and whether the movie-redirects Worker now sends them somewhere or
+  leaves them a 404.
 - **Bandwidth** — how much data the self-hosted runners use on the 5G router,
   day by day and against the billing cycle, with Retrieve's runs shaded on the
   hour-by-hour chart.
@@ -40,11 +43,11 @@ npm run prepare-data   # fetch-source-data + build-report
 npm run dev
 ```
 
-| Step                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs, daily venue health logs and monthly bandwidth logs (with the Smarty seed) from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
-| `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                                                                              |
-| `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Step                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run fetch-source-data` | Downloads into `./source-data`: the latest `data-combined` (and the listings from each of its recent releases), `data-matched` and `data-transformed` releases, the title normaliser from `clusterflick/scripts`, the monthly LLM usage logs, daily venue health logs and monthly bandwidth logs (with the Smarty seed) and monthly film 404 logs from `data-analysed`, the latest transform run's per-venue LLM usage artifacts, and the workflow run history for every pipeline repo. |
+| `npm run build-report`      | Reduces those into one JSON file per page under `src/generated`.                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `npm run build`             | Static export into `./out`.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 Both directories are git-ignored — the reports are derived, and regenerating
 them is a command rather than a commit. `prepare-data` must run before `build`,
@@ -59,6 +62,7 @@ Useful environment variables for the fetch step:
 | `HEALTH_DAYS`                       | `14`    | How many daily venue-health releases to pull.                                                                             |
 | `LLM_MONTHS`                        | `6`     | How many monthly LLM usage releases to pull.                                                                              |
 | `BANDWIDTH_MONTHS`                  | `3`     | How many monthly bandwidth releases (hourly router readings) to pull.                                                     |
+| `MOVIE_404_MONTHS`                  | `2`     | How many monthly film 404 log releases (a row per deploy of clusterflick.com) to pull.                                    |
 | `RUN_WINDOW_DAYS`                   | `30`    | How far back to read workflow runs.                                                                                       |
 | `FLAP_RELEASES`                     | `30`    | How many `data-combined` releases to compare when looking for flapping listings — about ten days.                         |
 | `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility and occasions trends read, at a release a week.                                            |
