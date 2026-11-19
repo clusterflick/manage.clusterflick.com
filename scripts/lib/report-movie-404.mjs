@@ -19,9 +19,6 @@ const DAY_MS = 86400000;
 // The review list and the per-deploy chart cover this many days. Older rows
 // stay in the log for anyone who wants them.
 const WINDOW_DAYS = 14;
-// The latest deploy's full list is shown in a table; a deploy that drops more
-// than this is shown in part, with the total beside it.
-const LATEST_LIMIT = 500;
 
 // What a lost URL's `kind` means, for the page.
 export const KIND_ORDER = ["lost", "retitled", "listing", "pruned", "unknown"];
@@ -109,8 +106,8 @@ export default function buildMovie404Report(rows) {
       lost: latest.lost,
       redirected: latest.redirected,
       review: latest.review,
-      shown: Math.min(latest.urls.length, LATEST_LIMIT),
-      urls: latest.urls.slice(0, LATEST_LIMIT),
+      // Uncapped, as the review list is: a catastrophic deploy should look it.
+      urls: latest.urls,
     },
   };
 }

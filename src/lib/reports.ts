@@ -956,7 +956,6 @@ export type Movie404Report =
         lost: number;
         redirected: number;
         review: number;
-        shown: number;
         urls: LostUrl[];
       };
     };

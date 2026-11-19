@@ -6,16 +6,9 @@ import StatusPill from "@/components/status-pill";
 import StackedBars from "@/components/charts/stacked-bars";
 import { movie404 } from "@/lib/reports";
 import { count, dateLabel, dateTimeLabel } from "@/lib/format";
-import {
-  KIND_DETAIL,
-  KIND_LABEL,
-  KIND_ORDER,
-  outcomeKeyLabel,
-  outcomeLabel,
-  outcomeSeverity,
-  siteUrl,
-} from "./labels";
+import { KIND_DETAIL, KIND_LABEL, KIND_ORDER, outcomeKeyLabel } from "./labels";
 import UrlsTable from "./urls-table";
+import ReviewTable from "./review-table";
 import styles from "./page.module.scss";
 
 export const metadata = { title: "Film URLs — Clusterflick manage" };
@@ -85,52 +78,7 @@ export default function FilmUrlsPage() {
         flush={review.length > 0}
       >
         {review.length > 0 ? (
-          <div className={styles.scroll}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>URL</th>
-                  <th>Why</th>
-                  <th>Now</th>
-                  <th className={styles.right}>Deploy</th>
-                </tr>
-              </thead>
-              <tbody>
-                {review.map((url) => (
-                  <tr key={`${url.deployedAt} ${url.path}`}>
-                    <td>
-                      <a href={siteUrl(url.path)} className={styles.path}>
-                        {url.path}
-                      </a>
-                      <div className={styles.subFigure}>
-                        {KIND_LABEL[url.kind]}
-                      </div>
-                    </td>
-                    <td>{url.review}</td>
-                    <td>
-                      <StatusPill severity={outcomeSeverity(url)}>
-                        {outcomeLabel(url)}
-                      </StatusPill>
-                      {url.outcome === "redirect" && (
-                        <div className={styles.subFigure}>
-                          →{" "}
-                          <a
-                            href={siteUrl(url.location)}
-                            className={styles.path}
-                          >
-                            {url.location}
-                          </a>
-                        </div>
-                      )}
-                    </td>
-                    <td className={styles.right}>
-                      {dateTimeLabel(url.deployedAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ReviewTable urls={review} />
         ) : (
           <p className={styles.allClear}>
             Over {deploysLabel(window.deploys)}, every film URL that stopped
@@ -232,10 +180,7 @@ export default function FilmUrlsPage() {
               : `retrieved ${dateTimeLabel(latest.previousGeneratedAt)}, now ${dateTimeLabel(latest.generatedAt)}`}
             ): {count(latest.pages.previous)} → {count(latest.pages.current)}{" "}
             film pages, {count(latest.lost)} URLs lost,{" "}
-            {count(latest.redirected)} now redirected
-            {latest.shown < latest.lost
-              ? `. The first ${count(latest.shown)} are shown.`
-              : "."}
+            {count(latest.redirected)} now redirected.
           </>
         }
         flush
