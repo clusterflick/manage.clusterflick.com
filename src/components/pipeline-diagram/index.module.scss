@@ -1,0 +1,348 @@
+// Across a wide screen, one row with the fork over two:
+//
+//   s0 c1 s1 c2 s2 c3 s3 c4 s4 cFork [sForkA / sForkB] cMerge sEnd
+//
+// Down a narrow one, a column, the fork's two stages side by side. The same
+// markup either way; only the placement changes. The breakpoint is where seven
+// cards stop fitting the 1180px main column with room for their words.
+$across: 1000px;
+
+.diagram {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+  margin-bottom: 20px;
+
+  @media (min-width: $across) {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr) 22px)
+      minmax(0, 1fr) 30px minmax(0, 1fr) 30px minmax(0, 1fr);
+    grid-template-rows: 1fr 1fr;
+    column-gap: 0;
+    row-gap: 10px;
+  }
+}
+
+// Narrow: everything full width except the fork's pair.
+.s0,
+.s1,
+.s2,
+.s3,
+.s4,
+.sEnd,
+.c1,
+.c2,
+.c3,
+.c4,
+.cFork,
+.cMerge {
+  grid-column: 1 / -1;
+}
+
+.sForkA {
+  grid-column: 1;
+}
+
+.sForkB {
+  grid-column: 2;
+}
+
+@media (min-width: $across) {
+  @each $name,
+    $column
+      in (
+        s0: 1,
+        c1: 2,
+        s1: 3,
+        c2: 4,
+        s2: 5,
+        c3: 6,
+        s3: 7,
+        c4: 8,
+        s4: 9,
+        cFork: 10,
+        cMerge: 12,
+        sEnd: 13
+      )
+  {
+    .#{$name} {
+      grid-column: $column;
+      grid-row: 1 / 3;
+    }
+  }
+
+  .sForkA,
+  .sForkB {
+    grid-column: 11;
+  }
+
+  .sForkA {
+    grid-row: 1;
+  }
+
+  .sForkB {
+    grid-row: 2;
+  }
+
+  // A stage on the line sits level with the middle of the fork.
+  .s0,
+  .s1,
+  .s2,
+  .s3,
+  .s4,
+  .sEnd {
+    align-self: center;
+  }
+}
+
+// --- Connectors -------------------------------------------------------------
+
+.connector {
+  display: block;
+  height: 22px;
+  color: var(--border-strong);
+
+  svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  path {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  @media (min-width: $across) {
+    height: auto;
+    align-self: stretch;
+  }
+}
+
+.cFork,
+.cMerge {
+  height: 36px;
+
+  @media (min-width: $across) {
+    height: auto;
+  }
+}
+
+.across {
+  display: none;
+}
+
+@media (min-width: $across) {
+  .across {
+    display: block;
+  }
+
+  .down {
+    display: none;
+  }
+}
+
+// Work moving into a running stage: the line turns the accent colour and its
+// dashes travel. Still for anyone who's asked for less motion - the colour
+// alone says the same.
+.flowing {
+  stroke: var(--series-1) !important;
+  stroke-dasharray: 6 5;
+  animation: flow 0.9s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -11;
+  }
+}
+
+// --- Cards ------------------------------------------------------------------
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 12px 12px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--tone);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--border-strong);
+    border-top-color: var(--tone);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--series-1);
+    outline-offset: 2px;
+  }
+}
+
+.selected {
+  border-color: var(--tone);
+  box-shadow:
+    0 0 0 1px var(--tone),
+    var(--shadow);
+
+  &:hover {
+    border-color: var(--tone);
+  }
+}
+
+// What the last sweep couldn't read is shown from before, dimmed.
+.unread {
+  border-style: dashed;
+  border-top-style: solid;
+}
+
+// Each tone sets the colour its card is drawn in, and the ink for its words.
+.good {
+  --tone: var(--status-good);
+  --tone-ink: var(--status-good-ink);
+}
+
+.warning {
+  --tone: var(--status-warning);
+  --tone-ink: var(--status-warning-ink);
+}
+
+.serious {
+  --tone: var(--status-serious);
+  --tone-ink: var(--status-serious-ink);
+}
+
+.critical {
+  --tone: var(--status-critical);
+  --tone-ink: var(--status-critical-ink);
+}
+
+.active {
+  --tone: var(--series-1);
+  --tone-ink: var(--series-1);
+}
+
+.idle {
+  --tone: var(--border-strong);
+  --tone-ink: var(--text-secondary);
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.name {
+  font-weight: 650;
+  font-size: 0.92rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+  color: var(--tone-ink);
+  border: 1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background: color-mix(in srgb, var(--tone) 13%, transparent);
+}
+
+.icon {
+  font-size: 0.66em;
+  line-height: 1;
+}
+
+.active .icon {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
+.dim {
+  color: var(--text-secondary);
+}
+
+.failedCount {
+  color: var(--status-critical-ink);
+  font-weight: 600;
+}
+
+.warnLine {
+  color: var(--status-warning-ink);
+  font-weight: 600;
+}
+
+.progress {
+  display: block;
+  height: 4px;
+  margin: 2px 0 1px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--series-1);
+  }
+}
+
+// Half as long again as usual: worth a look, not yet a failure.
+.overdue span {
+  background: var(--status-warning);
+}
+
+.unplaced {
+  margin: -8px 0 20px;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.linkButton {
+  padding: 0;
+  font: inherit;
+  color: var(--series-1);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--series-1) 40%, transparent);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}

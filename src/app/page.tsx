@@ -5,6 +5,7 @@ import StatTile from "@/components/stat-tile";
 import StatGrid from "@/components/stat-tile/grid";
 import StatusPill from "@/components/status-pill";
 import RelativeTime from "@/components/relative-time";
+import { PipelineStrip } from "@/components/pipeline-live";
 import Sparkline from "@/components/charts/sparkline";
 import { overview } from "@/lib/reports";
 import { cacheStatus, failureStatus, rateStatus } from "@/lib/status";
@@ -63,6 +64,8 @@ export default function OverviewPage() {
           </>
         }
       />
+
+      <PipelineStrip />
 
       <h2 className={styles.sectionHeading}>Catalogue</h2>
       <StatGrid>
