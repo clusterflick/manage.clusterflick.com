@@ -410,6 +410,13 @@ export type WorkflowReport = {
   successRate: number | null;
   unassisted: number | null;
   unassistedRate: number | null;
+  // Whether the flow re-runs itself once on failure, and how many runs that
+  // recovered - counted in `unassisted`. Null where there is no re-run.
+  reportsAutoRerun: boolean;
+  autoRecovered: number | null;
+  // Wall-clock, attempt 1's start to the run's end, over the runs the
+  // automatic re-run recovered.
+  timeToReleaseAfterRerun: DurationSpread;
   assistedRuns: number;
   duration: DurationSpread;
   queue: DurationSpread;
@@ -851,7 +858,10 @@ export type MatchedSource =
 // latest release at all, none of its matches carry a score, the share that do
 // has fallen, or it is matching far fewer films than usual.
 export type MatchedFlagKind =
-  "missing" | "unscored" | "scores-fell" | "matches-fell";
+  | "missing"
+  | "unscored"
+  | "scores-fell"
+  | "matches-fell";
 
 export type MatchedFlag = {
   key: string;
@@ -896,7 +906,11 @@ export type MatchedReport =
 // departed page (a fault), and `unknown` one compared against a map too old to
 // say.
 export type LostUrlKind =
-  "retitled" | "listing" | "pruned" | "lost" | "unknown";
+  | "retitled"
+  | "listing"
+  | "pruned"
+  | "lost"
+  | "unknown";
 
 // One lost URL, with what the movie-redirects Worker does with it now.
 export type LostUrl = {

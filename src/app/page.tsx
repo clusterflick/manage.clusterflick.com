@@ -261,7 +261,7 @@ export default function OverviewPage() {
               <StatTile
                 label="Least reliable flow"
                 value={worstUnassisted.name}
-                detail={`${percent(worstUnassisted.unassistedRate)} of runs finished first time unaided`}
+                detail={`${percent(worstUnassisted.unassistedRate)} of runs finished without a person`}
                 severity={rateStatus(worstUnassisted.unassistedRate)}
                 href={`/pipeline#${worstUnassisted.key}`}
               />
