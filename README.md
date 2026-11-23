@@ -8,9 +8,11 @@
 > pipeline. See the [Clusterflick organisation](https://github.com/clusterflick)
 > for how the pieces fit together.
 
-An internal review site for the Clusterflick pipeline. It answers nine questions
+An internal review site for the Clusterflick pipeline. It answers ten questions
 in one place:
 
+- **Live** — where the pipeline is right now, and whether anything needs a
+  person.
 - **Catalogue** — what is in the current data, what failed to match, what the
   matches are missing, and which listings flap from one run to the next.
 - **LLM usage** — what the transform pipeline spends on the LLM, and where it
@@ -69,6 +71,29 @@ Useful environment variables for the fetch step:
 | `ACCESSIBILITY_WEEKS`               | `26`    | How far back the accessibility and occasions trends read, at a release a week.                                            |
 | `ACCESSIBILITY_DAILY_DAYS`          | `14`    | The most recent days the accessibility trend reads a release a day for.                                                   |
 | `MATCHED_DAYS`                      | `90`    | How many days of data-matched releases the matching trend reads, the last of each day.                                    |
+
+## The live page
+
+`/live` is the one page read in the browser rather than built: a diagram of the
+pipeline's stages as they run, from the
+[api-pipeline](https://github.com/clusterflick/api-pipeline) Worker, which
+sweeps GitHub Actions every two minutes and serves the result at
+`https://pipeline.clusterflick.com/status`. The page polls it every 30 seconds
+while the tab is visible, and the overview carries a one-line summary of it.
+Everything else here is a build-time snapshot, which is no use for "is
+transform running yet?".
+
+What each state means, and which failures are left to an automatic re-run, is
+the Worker's call and documented in its README; the page draws what it says.
+The types in `src/lib/pipeline-live.ts` copy the Worker's `formatVersion` 1,
+and a version the page doesn't know is refused rather than misread. If the
+Worker can't be reached the page says so and keeps showing what it last said;
+if its last sweep is more than ten minutes old, it says the picture is old.
+
+To work on it against a local Worker, set
+`NEXT_PUBLIC_PIPELINE_STATUS_URL=http://localhost:8791/status` for `npm run
+dev`, and add `http://localhost:3000` to the Worker's `ALLOWED_ORIGINS` in its
+`.dev.vars`.
 
 ## Deployment
 

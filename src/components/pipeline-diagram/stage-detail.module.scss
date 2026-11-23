@@ -1,0 +1,133 @@
+.title {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.repo {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.facts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.callout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.87rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+  border-left: 3px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 7%, transparent);
+}
+
+.calloutLabel {
+  font-weight: 650;
+  color: var(--tone-ink);
+  white-space: nowrap;
+}
+
+.aside {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+}
+
+.good {
+  --tone: var(--status-good);
+  --tone-ink: var(--status-good-ink);
+}
+
+.warning {
+  --tone: var(--status-warning);
+  --tone-ink: var(--status-warning-ink);
+}
+
+.serious {
+  --tone: var(--status-serious);
+  --tone-ink: var(--status-serious-ink);
+}
+
+.critical {
+  --tone: var(--status-critical);
+  --tone-ink: var(--status-critical-ink);
+}
+
+.active {
+  --tone: var(--series-1);
+  --tone-ink: var(--series-1);
+}
+
+.idle {
+  --tone: var(--border-strong);
+  --tone-ink: var(--text-secondary);
+}
+
+.scroll {
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+}
+
+.jobs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+
+  th,
+  td {
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  th {
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+}
+
+.caption {
+  caption-side: top;
+  text-align: left;
+  padding: 10px 16px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.number {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.runner {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+
+.jobState {
+  color: var(--tone-ink);
+  font-weight: 600;
+  font-size: 0.8rem;
+
+  span {
+    font-size: 0.7em;
+  }
+}

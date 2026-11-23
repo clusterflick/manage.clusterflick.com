@@ -1,0 +1,96 @@
+.waiting {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 20px;
+}
+
+.good {
+  --tone: var(--status-good);
+  --tone-ink: var(--status-good-ink);
+}
+
+.warning {
+  --tone: var(--status-warning);
+  --tone-ink: var(--status-warning-ink);
+}
+
+.critical {
+  --tone: var(--status-critical);
+  --tone-ink: var(--status-critical-ink);
+}
+
+.active {
+  --tone: var(--series-1);
+  --tone-ink: var(--series-1);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  margin-bottom: 14px;
+}
+
+.overall {
+  font-weight: 650;
+  color: var(--tone-ink);
+  white-space: nowrap;
+
+  span {
+    font-size: 0.7em;
+  }
+}
+
+.summary .overall {
+  font-size: 1.15rem;
+}
+
+.swept,
+.detail {
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+}
+
+.banner {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font-size: 0.87rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--tone) 40%, transparent);
+  border-left: 3px solid var(--tone);
+  background: color-mix(in srgb, var(--tone) 7%, transparent);
+}
+
+.attention {
+  margin: 0 0 18px;
+  padding: 10px 12px 10px 30px;
+  font-size: 0.87rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--status-critical) 40%, transparent);
+  border-left: 3px solid var(--status-critical);
+  background: color-mix(in srgb, var(--status-critical) 6%, transparent);
+
+  li + li {
+    margin-top: 4px;
+  }
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--tone, var(--border-strong));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+
+  a:last-child {
+    margin-left: auto;
+    font-size: 0.85rem;
+  }
+}

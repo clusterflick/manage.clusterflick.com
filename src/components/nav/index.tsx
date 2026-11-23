@@ -6,6 +6,7 @@ import styles from "./index.module.scss";
 
 const LINKS = [
   { href: "/", label: "Overview" },
+  { href: "/live", label: "Live" },
   { href: "/catalogue", label: "Catalogue" },
   { href: "/llm-usage", label: "LLM usage" },
   { href: "/pipeline", label: "Pipeline" },
