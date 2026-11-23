@@ -157,8 +157,11 @@ the pages that carry them say so too:
   reported alongside, because runner contention is worth seeing; it just is not
   a fact about the build.
 - **Unassisted run rate** is only meaningful for retrieve, transform and match.
-  Those three have no auto-rerun workflow, so `run_attempt > 1` can only mean a
-  person clicked re-run. The rest carry a rerun-on-failure workflow or
+  Transform and match have no auto-rerun workflow, so `run_attempt > 1` can only
+  mean a person clicked re-run. Retrieve re-runs its failed jobs once by itself
+  (`rerun-failed-retrieve.yml`, attempt 2, as `github-actions[bot]`), so a run
+  that succeeded on that attempt counts as unassisted, and its time to release -
+  attempt 1's start to the run's end - is reported on its own. The rest carry a rerun-on-failure workflow or
   `cancel-in-progress`, where a later attempt says nothing about whether anyone
   was involved. It is left blank there rather than computed.
 - **Venues with no listings** is split by `programming`. Of 414 venues, 268 are

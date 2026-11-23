@@ -246,6 +246,16 @@ export async function listRunJobs(repo, runId) {
   return body.jobs || [];
 }
 
+// One attempt of a run, as the run itself reads at that attempt. The run's own
+// `run_started_at` is the latest attempt's, so when an earlier one started is
+// only reachable this way.
+export async function getRunAttempt(repo, runId, attempt) {
+  return api(
+    `https://api.github.com/repos/${repo}/actions/runs/${runId}/attempts/${attempt}`,
+    `${repo} run ${runId} attempt ${attempt}`,
+  );
+}
+
 // One attempt's jobs. `listRunJobs` answers with the latest attempt only, so
 // whatever an earlier attempt ran - every job that succeeded before somebody
 // clicked re-run - is only reachable this way.

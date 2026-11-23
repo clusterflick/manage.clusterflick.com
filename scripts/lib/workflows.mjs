@@ -3,9 +3,10 @@
 // Its own module because both the fetch step and the report step need it, and
 // importing it from the fetch script would run that script's download.
 //
-// `unassisted` marks the three with no auto-rerun workflow of their own, where
-// `run_attempt > 1` can only mean a person clicked re-run - so the percentage
-// means "finished first time, unaided". The others carry either a
+// `unassisted` marks the three where the percentage means "finished without a
+// person". On transform and match `run_attempt > 1` can only mean a person
+// clicked re-run. Retrieve has an automatic re-run (`autoRerun`, below), whose
+// attempt is told from a person's by who started it. The others carry either a
 // rerun-on-failure workflow or `cancel-in-progress`, which makes a later
 // attempt say nothing about whether anyone was involved; they are reported on
 // duration and conclusion alone, and `unassistedGap` is the short reason the
@@ -19,6 +20,13 @@ export const WORKFLOWS = [
     repo: "clusterflick/data-retrieved",
     workflow: "retrieve.yml",
     unassisted: true,
+    // data-retrieved's rerun-failed-retrieve.yml re-runs a failed run's failed
+    // jobs once, as attempt 2, ten minutes after the last of them finished. It
+    // runs with `github.token`, so that attempt's `triggering_actor` is the
+    // bot, where a re-run someone clicked names them. A run that succeeded on
+    // it needed no one: it counts as unassisted, and its time to release -
+    // attempt 1's start to the run's end - is reported on its own.
+    autoRerun: { attempt: 2, actor: "github-actions[bot]" },
     // Retrieve is the one flow on self-hosted runners - a machine with four
     // macOS workers, six Raspberry Pis and the OptiPlexes - so how long its
     // jobs take depends on which machine picked them up. Each successful job's

@@ -58,6 +58,7 @@ import {
   api,
   downloadAsset,
   downloadFile,
+  getRunAttempt,
   hasToken,
   latestRelease,
   listAttemptJobs,
@@ -913,6 +914,9 @@ async function fetchWorkflowRuns() {
             .map((run) => ({
               id: run.id,
               attempt: run.run_attempt,
+              // The latest attempt's: on a run that succeeded, the one that
+              // succeeded. Tells an automatic re-run from a person's.
+              triggeredBy: run.triggering_actor?.login ?? null,
               conclusion: run.conclusion,
               event: run.event,
               startedAt: run.run_started_at ?? run.created_at,
@@ -939,11 +943,30 @@ async function fetchWorkflowRuns() {
           let timings = timingsCache[key];
           // Cached before job durations were kept, so looked up once more.
           if (timings && target.byRunner && !timings.jobs) timings = undefined;
+          // A run an automatic re-run may have recovered needs attempt 1's
+          // start, for its time to release; cached before that was kept, so
+          // looked up once more.
+          const mayBeRecovered =
+            target.autoRerun &&
+            run.conclusion === "success" &&
+            run.attempt === target.autoRerun.attempt;
+          if (timings && mayBeRecovered && !timings.firstAttemptStartedAt) {
+            timings = undefined;
+          }
           if (!timings) {
             const jobs = await listRunJobs(target.repo, run.id);
             timings = timingsFor(run, jobs);
             if (target.byRunner) {
               timings.jobs = await jobDurations(target, run, jobs);
+            }
+            if (mayBeRecovered) {
+              const first = await getRunAttempt(target.repo, run.id, 1);
+              if (!first.run_started_at) {
+                throw new Error(
+                  `${target.repo} run ${run.id} attempt 1 has no run_started_at`,
+                );
+              }
+              timings.firstAttemptStartedAt = first.run_started_at;
             }
             if (target.guardJob && run.conclusion === "success") {
               timings.didNothing = didNothing(jobs, target.guardJob);

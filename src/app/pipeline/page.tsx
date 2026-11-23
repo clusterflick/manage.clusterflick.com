@@ -125,6 +125,21 @@ export default function PipelinePage() {
                     {duration(workflow.duration.maxMs)}
                   </span>
                 </div>
+                {workflow.reportsAutoRerun && (
+                  <div className={styles.figure}>
+                    <span className={styles.figureLabel}>
+                      Recovered by auto re-run
+                    </span>
+                    <span className={`${styles.figureValue} numeric`}>
+                      {noData ? "—" : count(workflow.autoRecovered ?? 0)}
+                    </span>
+                    <span className={styles.figureAside}>
+                      {workflow.timeToReleaseAfterRerun.count
+                        ? `median ${duration(workflow.timeToReleaseAfterRerun.medianMs)} to release`
+                        : "none in the window"}
+                    </span>
+                  </div>
+                )}
                 <div className={styles.figure}>
                   <span className={styles.figureLabel}>Worst queue wait</span>
                   <span className={`${styles.figureValue} numeric`}>

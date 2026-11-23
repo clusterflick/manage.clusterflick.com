@@ -4,19 +4,30 @@
 //
 //   Did it work?     - the conclusion of every completed run in the window.
 //   Did it work
-//   without help?    - `run_attempt === 1 && success`. Only meaningful on
-//                      retrieve, transform and match: those three have no
-//                      auto-rerun workflow, and the `nick-fields/retry`
-//                      wrappers inside their jobs retry *within* a step, so
-//                      `run_attempt` only ever goes past 1 because a person
-//                      clicked re-run. The rest carry rerun-on-failure
-//                      workflows or `cancel-in-progress`, where a later
-//                      attempt says nothing about whether anyone was involved.
+//   without help?    - `run_attempt === 1 && success`, or a success on the
+//                      attempt an automatic re-run makes when that re-run
+//                      started it. Only meaningful on retrieve, transform and
+//                      match. The `nick-fields/retry` wrappers inside their
+//                      jobs retry *within* a step; transform and match have no
+//                      auto-rerun workflow, so `run_attempt` only goes past 1
+//                      there because a person clicked re-run. Retrieve does
+//                      (`autoRerun` in lib/workflows.mjs), and its attempt is
+//                      told from a person's by `triggering_actor`. The rest
+//                      carry rerun-on-failure workflows or
+//                      `cancel-in-progress`, where a later attempt says nothing
+//                      about whether anyone was involved.
 //
 // Duration averages first-attempt successes only. GitHub rewrites
 // `run_started_at` to the latest attempt when a run is re-run, so a retried
 // run's elapsed time doesn't describe anything real - most of the gap is time
 // spent waiting for someone to notice.
+//
+// An automatic re-run is the exception: its gap is set by the re-run workflow,
+// not by anyone noticing, so the runs it recovered get a figure of their own -
+// time to release, attempt 1's start to the run's end. That one is wall-clock,
+// not execution: the point is how long the release took to arrive, and the
+// re-run's wait is part of that. It is kept apart from duration, which answers
+// how long a run takes.
 //
 // And duration means *execution*, measured across the jobs that actually ran,
 // not `updated_at - run_started_at`. That subtraction includes time queued for
@@ -43,6 +54,31 @@ import {
 // once a week" stops being green. Same thresholds as the badges.
 const GOOD_PERCENT = 0.9;
 const OK_PERCENT = 0.75;
+
+// True when a run succeeded on the attempt the flow's automatic re-run makes,
+// and that re-run started it. A run on that attempt with no record of who
+// started it can't be told either way, and throws rather than being guessed.
+function isAutoRecovered(run, autoRerun) {
+  if (!autoRerun) return false;
+  if (run.conclusion !== "success" || run.attempt !== autoRerun.attempt) {
+    return false;
+  }
+  if (!run.triggeredBy) {
+    throw new Error(
+      `Run ${run.id} (attempt ${run.attempt}) has no triggeredBy - cannot tell an automatic re-run from a person's. Re-fetch the runs.`,
+    );
+  }
+  return run.triggeredBy === autoRerun.actor;
+}
+
+function timeToRelease(run) {
+  if (!run.firstAttemptStartedAt) {
+    throw new Error(
+      `Run ${run.id} was recovered by an automatic re-run but has no firstAttemptStartedAt.`,
+    );
+  }
+  return Date.parse(run.updatedAt) - Date.parse(run.firstAttemptStartedAt);
+}
 
 export function statusFor(value) {
   if (value >= GOOD_PERCENT) return "good";
@@ -204,6 +240,10 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
     const nothingCollected = runs.length === 0;
     const succeeded = runs.filter((run) => run.conclusion === "success");
     const firstAttemptSuccesses = succeeded.filter((run) => run.attempt === 1);
+    const autoRecovered = succeeded.filter((run) =>
+      isAutoRecovered(run, target.autoRerun),
+    );
+    const unassistedCount = firstAttemptSuccesses.length + autoRecovered.length;
 
     const failures = runs
       .filter(
@@ -212,9 +252,11 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 
     // Runs needing a person: either they ended badly, or they only succeeded on
-    // a second attempt somebody triggered.
+    // a later attempt somebody triggered.
     const assisted = runs.filter(
-      (run) => run.conclusion !== "success" || run.attempt > 1,
+      (run) =>
+        run.conclusion !== "success" ||
+        (run.attempt > 1 && !isAutoRecovered(run, target.autoRerun)),
     );
 
     const byDay = [...groupBy(runs, (run) => londonDay(run.startedAt))]
@@ -262,13 +304,16 @@ export default function buildPipelineReport(targets, runsByKey, meta) {
         ? null
         : round(rate(succeeded.length, runs.length)),
       unassisted:
-        target.unassisted && !nothingCollected
-          ? firstAttemptSuccesses.length
-          : null,
+        target.unassisted && !nothingCollected ? unassistedCount : null,
       unassistedRate:
         target.unassisted && !nothingCollected
-          ? round(rate(firstAttemptSuccesses.length, runs.length))
+          ? round(rate(unassistedCount, runs.length))
           : null,
+      // Null where the flow has no automatic re-run, so the page can tell "none
+      // recovered" from "nothing to recover them".
+      reportsAutoRerun: Boolean(target.autoRerun),
+      autoRecovered: target.autoRerun ? autoRecovered.length : null,
+      timeToReleaseAfterRerun: spread(autoRecovered.map(timeToRelease)),
       assistedRuns: assisted.length,
       // What the flow takes to run, jobs only.
       duration: spread(firstAttemptSuccesses.map(executionOf)),
